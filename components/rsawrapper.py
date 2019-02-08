@@ -1,7 +1,6 @@
 import zlib
 import os
 import sys
-import Crypto
 from Crypto.PublicKey import RSA
 from Crypto import Random
 import ast
@@ -23,7 +22,8 @@ class RSAWrapper:
 		   fwrite.close()
 
 	def generate_RSA(bits=512):
-		random_generator = Random.new().read
+		# random_generator = Random.new().read
+		random_generator = 32
 		new_key = RSA.generate(bits, random_generator) 
 		public_key = new_key.publickey().exportKey("pkcs1-public") 
 		private_key = new_key.exportKey("pkcs1-private") 
