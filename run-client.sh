@@ -1,0 +1,1 @@
+clear & python3 m2y-client.py /m2you/zhenqiang/photo/myfoto.meta

@@ -6,7 +6,9 @@ import io
 import json
 import binascii
 import zlib
-# from components.rsawrapper import RSAWrapper 
+
+from components.rsawrapper import RSAWrapper 
+from collections import OrderedDict
 
 SERVER_URL='127.0.0.1'
 SERVER_PORT = 5000
@@ -22,6 +24,7 @@ glength = 0
 logFile = open("./log/client.log", "a")
 dirpath = os.getcwd()
 sendfilePath = dirpath + sys.argv[1]
+rsawrapper = RSAWrapper()
 
 def encryptRSA(toEncrypt, relativeOrAbsolutePathToPublicKey) :
 	absolutePath = path.resolve(relativeOrAbsolutePathToPublicKey)
@@ -50,34 +53,30 @@ def checkFileExist(filePath):
 def sendMetaData(reader, writer) :
 	meta_filepath = checkFileExist(sendfilePath)
 	if meta_filepath == None :
-		return
+		return None
 	JsonMeta = None;
 	with io.open(meta_filepath, 'r', encoding='utf8') as meta_info:
-		JsonMeta = json.load(meta_info) 
+		JsonMeta = json.load(meta_info)         
 	if(JsonMeta == None):
-		return
-	print(JsonMeta)		
-	img_datapath = './m2you/'+JsonMeta['from']+'/'+JsonMeta['folder']+'/'+JsonMeta['filename']
-	print(img_datapath)
+		return  None
+	img_datapath = './m2you/'+JsonMeta['from']+'/'+JsonMeta['folder']+'/'+JsonMeta['filename']  
 	img_datapath = checkFileExist(img_datapath)
 	if img_datapath == None :
-		return
+		return  None
 	imgdata_statinfo = os.stat(img_datapath)
 	JsonMeta['filesize'] = imgdata_statinfo.st_size;
-	json_meta_str = json.dump(JsonMeta)
-	checkSum = zlib.crc32(json_meta_str, 'utf8')
-	JsonMeta['metaCRC'] = checkSum
-	print("send crc : ", checkSum)
-	enc = rsaWrapper.encryptU(json_meta_str, './m2you/'+JsonMeta['from']+'/pubKey/'+JsonMeta['to']+'.data')
-	print("Sent encrypted txt : \n", enc);
-	writer.write(enc)
+	json_meta_str = json.dumps(JsonMeta, sort_keys=True)    
+	checkSum = rsawrapper.getCRCCode(json_meta_str)
+	JsonMeta['metaCRC'] = str(checkSum)
+	return rsawrapper.encryptJTS(json.dumps(JsonMeta), './m2you/'+JsonMeta['from']+'/pubKey/'+JsonMeta['to']+'.data')   
+	
 
 
 def encrypt(buffer):
 	cipher = crypto.createCipher('aes-128-ctr',FILE_KEY)
 	crypted = Buffer.concat([cipher.update(buffer),cipher.final()])
-	FILE_CRC += crc.crc32(crypted, 'hex')
-	FILE_CRC = FILE_CRC % 0xFFFFFFFFFFFFFFFF
+	FILE_CRC = 0
+	FILE_CRC ^= crc.crc32(crypted, 'hex')   
 	return crypted
 
 
@@ -139,24 +138,25 @@ def sendFileToServer():
 	encBuf = encrypt(tmpBuf)
 	client.write(encBuf)
 
-
 def mainFunction(data) :
+	global CLIENT_STATUS
 	if CLIENT_STATUS == 0:
-		print(' \n------ Server Response: ---\n\n', data.toString('utf-8'))
-		dec_tst = rsaWrapper.decryptU(data.toString('utf-8'), './m2you/zhenqiang/privateKey/zhenqiang.data'); 
+		print(' \n------ Server Response: ---\n\n', data)
+		dec_tst = rsaWrapper.decryptJTS(data, './m2you/zhenqiang/privateKey/zhenqiang.data'); 
 		print("\n---- decripted txt from server --- \n", dec_tst)
 		FILE_KEY = rsaWrapper.checkMetaData(JSON.parse(dec_tst))
 		if FILE_KEY == None:
 			print("\ncrc check failed!")
-			return
+			return None
 		
 		print("\n---- crc check success! ---- \n")
 		print("\n------- start send file ---------\n")
 		print("file key : ", FILE_KEY);               
 		 # sendFileToServer()
-		sendFileToServerByStream()
+		return  sendFileToServerByStream()
 		 # CLIENT_STATUS = 1
 		 # psBar.start(FILE_BUF.length/BLOCK_SIZE, 0); 
+
 	elif CLIENT_STATUS == 1:
 		INDEX +=1;                
 		psBar.update(INDEX)
@@ -206,31 +206,44 @@ def mainFunction(data) :
 		client.write(FILE_CRC.toString())
 		psBar.update(FILE_BUF.length/BLOCK_SIZE)
 		CLIENT_STATUS = 2
-	
+	else :
+		return None
 
-	
 
+class FileEncryptProtocol(asyncio.Protocol):
+	def connection_made(self, transport):
+		self.transport = transport
+		result = sendMetaData(self.transport)        
+		if result != None
+			self.transport.write(result)
 	
-	
+	def data_received(self, data):
+		self.transport.write(data)
 
+async def main(host, port):
+	loop = asyncio.get_running_loop()
+	server = await loop.create_server(FileEncryptProtocol, host, port)
+	await server.serve_forever()
+
+asyncio.run(main(SERVER_URL, SERVER_PORT))
 
 
 async def main_filetrans_process(message, loop):   
 	reader, writer = await asyncio.open_connection(SERVER_URL, SERVER_PORT, loop=loop)
 	print("----------start connect to server-----------")
-	sendMetaData(reader, writer)
-	# mainFunction()
-	# print('Send: %r' % message)
-	# writer.write(message.encode())
+	print("----------main Function -----------")    
+	# while True:
+	# data = await reader.read()    
+	# print(data)
+	#   result = mainFunction(data)
+	#   if result == None:
+	#       break
+	#   else :
+	#       writer.write(result)
+	#       await writer.drain()
 
-	# data = await reader.read(100)
-	# print('Received: %r' % data.decode())
-
-	# print('Close the socket')
+	# print('----------Close the socket -------')
 	# writer.close()
 
 
 message = sys.argv[1]
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main_filetrans_process(message, loop))
-loop.close()
