@@ -15,7 +15,8 @@ import json
 
 logging.basicConfig(level=logging.DEBUG)
 logging.debug('This message should go to the log file')
-STR_SPLIT_LEN = 184
+STR_SPLIT_LEN = 64
+
 
 class RSAWrapper:
 	def write_keys_to_file(self, out_path, value):		
@@ -52,7 +53,7 @@ class RSAWrapper:
 			if not os.path.exists('./m2you/roland-frei/pubKey'):
 				os.mkdir('./m2you/roland-frei/pubKey')
 		except Exception as ex:
-			ex = None;
+			ex = None;cipher_text
 
 		priv, pub = self.generate_RSA()		
 		print('priv : ', priv); 
@@ -69,10 +70,10 @@ class RSAWrapper:
 		print('priv : ', priv)
 		print('pub : ', pub)
 
-		out_path = './m2you/zhenqiang/privateKey/zhenqiang.data'
+		out_path = './m2you/zhenqiang/pubKey/zhenqiang.data'
 		self.write_keys_to_file(out_path, priv)	
 	 
-		out_path = './m2you/zhenqiang/pubKey/eric-brian.data'
+		out_path = './m2you/zhenqiang/privateKey/zhenqiang.data'
 		self.write_keys_to_file(out_path, priv)	
 	
 	def encryptJTS(self, toEncrypt, relativeOrAbsolutePathToPublicKey):
@@ -86,7 +87,7 @@ class RSAWrapper:
 				start_pos = i;
 				end_pos = min(i + STR_SPLIT_LEN, len_enc)
 				sub_str = toEncrypt[start_pos:end_pos]
-				cipher_text.extend(public_key.encrypt(base64.b64encode(sub_str.encode()), 64)[0])				
+				cipher_text.extend(public_key.encrypt(base64.b64encode(sub_str.encode()), STR_SPLIT_LEN)[0])				
 				i += STR_SPLIT_LEN
 			return cipher_text
 		except Exception as e:
@@ -114,7 +115,7 @@ class RSAWrapper:
 		return None
 
 	def getCRCCode(self, str_data):
-		print('okkk' + str_data)
+		# print('okkk' + str_data)
 		return zlib.crc32(bytearray(str_data, 'utf8'))
 
 	def checkMetaData(self,  metaData):
@@ -128,4 +129,10 @@ class RSAWrapper:
 			print("Failed in CRC check!")
 			return False
 		return True
+
+	def int_of_string(self, s):
+		return int(binascii.hexlify(s), 16)
+
+	def make_key(self, origin_key):
+		return bytes("{: <32}".format(origin_key), 'utf8')
 

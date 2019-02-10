@@ -33,21 +33,29 @@ def test_rsa_key(pub_key, priv_key):
 
 def read_key(filepath):
 	result = None
-	with open(out_path, 'rb') as fwrite:
-	   result = fwrite.read()
-	   fwrite.close()
+	with open(out_path, 'rb') as fread:
+	   result = fread.read()
+	   fread.close()
 	return result
 
 
 rsa = RSAWrapper()
 # prv_key, pub_key = rsa.generate_RSA()
-# rsa.generateRSAKey();
+rsa.generateRSAKey();
 
-# out_path = './m2you/zhenqiang/pubKey/roland-frei.data'
-# pub_key = read_key(out_path) 
-# out_path = './m2you/roland-frei/privateKey/roland-frei.data'		
-# prv_key = read_key(out_path)
-# test_rsa_key(pub_key, prv_key)
+out_path = './m2you/zhenqiang/pubKey/roland-frei.data'
+pub_key = read_key(out_path) 
+out_path = './m2you/roland-frei/privateKey/roland-frei.data'		
+prv_key = read_key(out_path)
+test_rsa_key(pub_key, prv_key)
+
+out_path = './m2you/zhenqiang/pubKey/zhenqiang.data'
+pub_key = read_key(out_path) 
+out_path = './m2you/zhenqiang/privateKey/zhenqiang.data'		
+prv_key = read_key(out_path)
+
+test_rsa_key(pub_key, prv_key)
+
 
 message_text = 'test_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetestaaaaaaaaaaaaaaaaaaaaaaaaaa aaaaa aaaaa atest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetestaaaaaaaaaaaaaaaaaaaaaaaaaatest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetestaaaaaaaaaaaaaaaaaaaaaaaaaatest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetestaaaaaaaaaaaaaaaaaaaaaaaaaatest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetestaaaaaaaaaaaaaaaaaaaaaaaaaa'
 

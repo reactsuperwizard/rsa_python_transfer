@@ -6,7 +6,8 @@ import io
 import json
 import binascii
 import zlib
-
+from Crypto.Cipher import AES
+from Crypto.Util import Counter
 from components.rsawrapper import RSAWrapper 
 from collections import OrderedDict
 
@@ -26,20 +27,6 @@ dirpath = os.getcwd()
 sendfilePath = dirpath + sys.argv[1]
 rsawrapper = RSAWrapper()
 
-def encryptRSA(toEncrypt, relativeOrAbsolutePathToPublicKey) :
-	absolutePath = path.resolve(relativeOrAbsolutePathToPublicKey)
-	publicKey = logFile.readFileSync(absolutePath, 'utf8')
-	# -->key = new NodeRSA()
-	key.importKey(publicKey, 'pkcs8-public')
-	return key.encrypt(toEncrypt, 'base64', 'utf8')
-
-
-def decryptRSA(toDecrypt, relativeOrAbsolutePathtoPrivateKey) :
-	absolutePath = path.resolve(relativeOrAbsolutePathtoPrivateKey)
-	privateKey = logFile.readFileSync(absolutePath, 'utf8')
-	# -->key = new NodeRSA()
-	key.importKey(privateKey, 'pkcs8-private')
-	return key.decrypt(toDecrypt, 'utf8')
 
 
 def checkFileExist(filePath):
@@ -50,7 +37,7 @@ def checkFileExist(filePath):
 		return None
 	return filePath
 
-def sendMetaData(reader, writer) :
+def sendMetaData() :
 	meta_filepath = checkFileExist(sendfilePath)
 	if meta_filepath == None :
 		return None
@@ -67,56 +54,48 @@ def sendMetaData(reader, writer) :
 	JsonMeta['filesize'] = imgdata_statinfo.st_size;
 	json_meta_str = json.dumps(JsonMeta, sort_keys=True)    
 	checkSum = rsawrapper.getCRCCode(json_meta_str)
-	JsonMeta['metaCRC'] = str(checkSum)
+	JsonMeta['metaCRC'] = str(checkSum)	
 	return rsawrapper.encryptJTS(json.dumps(JsonMeta), './m2you/'+JsonMeta['from']+'/pubKey/'+JsonMeta['to']+'.data')   
 	
 
 
-def encrypt(buffer):
-	cipher = crypto.createCipher('aes-128-ctr',FILE_KEY)
-	crypted = Buffer.concat([cipher.update(buffer),cipher.final()])
-	FILE_CRC = 0
-	FILE_CRC ^= crc.crc32(crypted, 'hex')   
-	return crypted
+def encrypt_with_aes(key, plaintext):
+	global FILE_CRC
+	iv = os.urandom(16)	
+	cipher = AES.new(key, AES.MODE_CFB, iv)
+	ciphertext = iv + cipher.encrypt(plaintext)
+	FILE_CRC ^= zlib.crc32(plaintext)
+	return ciphertext
 
 
 def writeLog(logStr):
 	logFile.appendFileSync("./log/client.log", logStr)
 
+def readInChunks(fileObj, chunkSize=2048):
+	while True:
+		data = fileObj.read(chunkSize)
+		if not data:
+			break
+		yield data
 
-def sendFileToServerByStream():
-	i = 0
-	#--> path = './m2you/'+JsonMeta['from']+'/'+JsonMeta['folder']+'/'+JsonMeta['filename']
-	#-->readStream = logFile.createReadStream(path, flags: 'r', highWaterMark: BLOCK_SIZE )
-	# let chunks = []
-	# psBar.start(JsonMeta['filesize']/BLOCK_SIZE, 0)
-	# Handle any errors while reading
-	#--> readStream.on('error', err => :   return cb(err) )
-
-	## Listen for data
-	# readStream.on('data', chunk => :
-	#  glength += chunk.length;        
-	#  encBuf = encrypt(chunk)
-		
-	#   # writeLog(INDEX+=1 + ":" + encBuf.toString())
-
-	#  client.write(encBuf)
-	#  sleep.usleep(10)
-	#   # psBar.update(INDEX+=1)
-	#   # print("send Buf : ", encBuf)
-	#  data_size += BLOCK_SIZE
-
-	# )
-
-	 # File is done being read
-	# readStream.on('close', () => :
-	#   # Create a buffer of the image from the stream
-	#  print("\n------- Sent File Total Length -----------\n", glength)
-	#  CLIENT_STATUS = 2
-	#  client.write(FILE_CRC.toString())
-	#   # return cb(None, Buffer.concat(chunks))
-	# )
-
+def sendFileToServerByStream(JsonMeta, writer):
+	path = './m2you/'+JsonMeta['from']+'/'+JsonMeta['folder']+'/'+JsonMeta['filename']
+	filekey = JsonMeta['filekey']
+	print(len(filekey))
+	filekey = rsawrapper.make_key(filekey)
+	data_size = 0
+	f = open(path, 'rb')
+	for chunk in readInChunks(f, BLOCK_SIZE):
+		data = encrypt_with_aes(filekey, chunk)
+		print('Send data len: ',  len(data))
+		writer.write(data)
+		writer.drain()
+		data_size += len(chunk)             		
+	f.close()
+	writer.write(bytes(FILE_CRC))
+	writer.drain()
+	writer.close()
+	CLIENT_STATUS = 2
 
 def sendFileToServer():
 	if(INDEX == 0) :
@@ -138,37 +117,35 @@ def sendFileToServer():
 	encBuf = encrypt(tmpBuf)
 	client.write(encBuf)
 
-def mainFunction(data) :
+def mainFunction(data, writer) :
 	global CLIENT_STATUS
+
 	if CLIENT_STATUS == 0:
 		print(' \n------ Server Response: ---\n\n', data)
-		dec_tst = rsaWrapper.decryptJTS(data, './m2you/zhenqiang/privateKey/zhenqiang.data'); 
+		dec_tst = rsawrapper.decryptJTS(data, './m2you/zhenqiang/privateKey/zhenqiang.data'); 
 		print("\n---- decripted txt from server --- \n", dec_tst)
-		FILE_KEY = rsaWrapper.checkMetaData(JSON.parse(dec_tst))
-		if FILE_KEY == None:
+		JsonMeta = json.loads(dec_tst)
+
+		if not rsawrapper.checkMetaData(JsonMeta):
 			print("\ncrc check failed!")
 			return None
+
+		FILE_KEY = JsonMeta['filekey']
 		
 		print("\n---- crc check success! ---- \n")
 		print("\n------- start send file ---------\n")
 		print("file key : ", FILE_KEY);               
-		 # sendFileToServer()
-		return  sendFileToServerByStream()
-		 # CLIENT_STATUS = 1
-		 # psBar.start(FILE_BUF.length/BLOCK_SIZE, 0); 
 
+		return  sendFileToServerByStream(JsonMeta, writer)
 	elif CLIENT_STATUS == 1:
 		INDEX +=1;                
 		psBar.update(INDEX)
-		 # print(INDEX + " : " + data_size)
-		 # print("\n", data.toString("utf8"))
+
 		if(INDEX < Math.floor(FILE_BUF.length/BLOCK_SIZE)):
 			sendFileToServer()
 			data_size += BLOCK_SIZE
 			return
-		# 16933
 
-		 # print("count ; ", Math.ceil(FILE_BUF.length/BLOCK_SIZE))
 		if(INDEX == Math.floor(FILE_BUF.length/BLOCK_SIZE)):
 			tmpBuf = Buffer.alloc(FILE_BUF.length - INDEX * BLOCK_SIZE)
 			 # print("rest size", FILE_BUF.length - (INDEX-1) * BLOCK_SIZE)
@@ -209,41 +186,65 @@ def mainFunction(data) :
 	else :
 		return None
 
+def receive_meta_data(data):
+	print(' \n------ Server Response: ---\n\n', data)
+	dec_tst = rsawrapper.decryptJTS(data, './m2you/zhenqiang/privateKey/zhenqiang.data'); 
+	print("\n---- decripted txt from server --- \n", dec_tst)
+	JsonMeta = json.loads(dec_tst)
 
-class FileEncryptProtocol(asyncio.Protocol):
-	def connection_made(self, transport):
-		self.transport = transport
-		result = sendMetaData(self.transport)        
-		if result != None
-			self.transport.write(result)
+	if not rsawrapper.checkMetaData(JsonMeta):
+		print("\ncrc check failed!")
+		return None
+
+	FILE_KEY = JsonMeta['filekey']
 	
-	def data_received(self, data):
-		self.transport.write(data)
+	print("\n---- crc check success! ---- \n")
+	print("\n------- start send file ---------\n")
+	print("file key : ", FILE_KEY);               
+	return JsonMeta
 
-async def main(host, port):
-	loop = asyncio.get_running_loop()
-	server = await loop.create_server(FileEncryptProtocol, host, port)
-	await server.serve_forever()
-
-asyncio.run(main(SERVER_URL, SERVER_PORT))
-
-
-async def main_filetrans_process(message, loop):   
+async def send_data(message, loop):
 	reader, writer = await asyncio.open_connection(SERVER_URL, SERVER_PORT, loop=loop)
-	print("----------start connect to server-----------")
-	print("----------main Function -----------")    
-	# while True:
-	# data = await reader.read()    
-	# print(data)
-	#   result = mainFunction(data)
-	#   if result == None:
-	#       break
-	#   else :
-	#       writer.write(result)
-	#       await writer.drain()
+	data = sendMetaData()
+	global FILE_CRC
+	print('Send: ',  len(data))
+	writer.write(data)
+	writer.drain()
+	data = await reader.read(1024)  	
+	print('Received: ', data)	
+	JsonMeta = receive_meta_data(data)
+	
+	path = './m2you/'+JsonMeta['from']+'/'+JsonMeta['folder']+'/'+JsonMeta['filename']
+	print(path)
+	filekey = JsonMeta['filekey']
+	file_size = JsonMeta['filesize']
+	print(len(filekey))
+	filekey = rsawrapper.make_key(filekey)
+	print(len(filekey))	
+	data_size = 0
+	f = open(path, 'rb')
+	for chunk in readInChunks(f, BLOCK_SIZE):
+		data = encrypt_with_aes(filekey, chunk)
+		print('Send data len: ',  len(data))
+		writer.write(data)
+		writer.drain()
+		data = await reader.read(1024)  	
+		print(data)
+		data_size += len(chunk)             
+		if data_size == file_size:
+			break
+	f.close()	
+	str_file_crc = str(FILE_CRC)
+	print('Send data len: ',  len(str_file_crc))
+	writer.write(bytes(str_file_crc, 'utf8'))
+	writer.drain()
+	data = await reader.read(1024)
+	print(data)
+	writer.close()
 
-	# print('----------Close the socket -------')
-	# writer.close()
+	print('Close the socket')
 
-
-message = sys.argv[1]
+message = 'Hello World!'
+loop = asyncio.get_event_loop()
+loop.run_until_complete(send_data(message, loop))
+loop.close()
