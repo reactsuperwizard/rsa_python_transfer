@@ -78,114 +78,6 @@ def readInChunks(fileObj, chunkSize=2048):
 			break
 		yield data
 
-def sendFileToServerByStream(JsonMeta, writer):
-	path = './m2you/'+JsonMeta['from']+'/'+JsonMeta['folder']+'/'+JsonMeta['filename']
-	filekey = JsonMeta['filekey']
-	print(len(filekey))
-	filekey = rsawrapper.make_key(filekey)
-	data_size = 0
-	f = open(path, 'rb')
-	for chunk in readInChunks(f, BLOCK_SIZE):
-		data = encrypt_with_aes(filekey, chunk)
-		print('Send data len: ',  len(data))
-		writer.write(data)
-		writer.drain()
-		data_size += len(chunk)             		
-	f.close()
-	writer.write(bytes(FILE_CRC))
-	writer.drain()
-	writer.close()
-	CLIENT_STATUS = 2
-
-def sendFileToServer():
-	if(INDEX == 0) :
-		print("file length : ", FILE_BUF.length)
-		if FILE_BUF.length > BLOCK_SIZE :
-			tmpBuf = Buffer.alloc(BLOCK_SIZE)
-			FILE_BUF.copy(tmpBuf, 0, INDEX * BLOCK_SIZE, (INDEX + 1) * BLOCK_SIZE)
-			encBuf = encrypt(tmpBuf)
-			client.write(encBuf)
-			data_size += BLOCK_SIZE
-		else:
-			encBuf = encrypt(FILE_BUF)
-			client.write(encBuf);    
-			CLIENT_STATUS = 3
-			print("small size : ", FILE_BUF.length)        
-		return    
-	tmpBuf = Buffer.alloc(BLOCK_SIZE)
-	FILE_BUF.copy(tmpBuf, 0, INDEX * BLOCK_SIZE, (INDEX + 1) * BLOCK_SIZE)
-	encBuf = encrypt(tmpBuf)
-	client.write(encBuf)
-
-def mainFunction(data, writer) :
-	global CLIENT_STATUS
-
-	if CLIENT_STATUS == 0:
-		print(' \n------ Server Response: ---\n\n', data)
-		dec_tst = rsawrapper.decryptJTS(data, './m2you/zhenqiang/privateKey/zhenqiang.data'); 
-		print("\n---- decripted txt from server --- \n", dec_tst)
-		JsonMeta = json.loads(dec_tst)
-
-		if not rsawrapper.checkMetaData(JsonMeta):
-			print("\ncrc check failed!")
-			return None
-
-		FILE_KEY = JsonMeta['filekey']
-		
-		print("\n---- crc check success! ---- \n")
-		print("\n------- start send file ---------\n")
-		print("file key : ", FILE_KEY);               
-
-		return  sendFileToServerByStream(JsonMeta, writer)
-	elif CLIENT_STATUS == 1:
-		INDEX +=1;                
-		psBar.update(INDEX)
-
-		if(INDEX < Math.floor(FILE_BUF.length/BLOCK_SIZE)):
-			sendFileToServer()
-			data_size += BLOCK_SIZE
-			return
-
-		if(INDEX == Math.floor(FILE_BUF.length/BLOCK_SIZE)):
-			tmpBuf = Buffer.alloc(FILE_BUF.length - INDEX * BLOCK_SIZE)
-			 # print("rest size", FILE_BUF.length - (INDEX-1) * BLOCK_SIZE)
-			FILE_BUF.copy(tmpBuf, 0, INDEX * BLOCK_SIZE, FILE_BUF.length)
-			encBuf = encrypt(tmpBuf)
-			data_size+= encBuf.length
-			print("rest size : ", encBuf.length)
-			client.write(encBuf)
-			return
-		
-		if(INDEX == Math.floor(FILE_BUF.length/BLOCK_SIZE) + 1):
-			print("\n--------- File CRC Send-------\n")
-			print("filecrc : ", FILE_CRC)
-			client.write(FILE_CRC.toString())
-			CLIENT_STATUS = 2
-			return
-		
-	elif CLIENT_STATUS == 2:
-		#--> oldpath = './m2you/' + JsonMeta['from'] + '/'+ JsonMeta['folder'] + '/'
-		fname = sendfilePath.split(".")[0]
-	
-		if data.toString() == "ACK":
-			 # psBar.stop()
-			print("\n------ ACK Received ---------\n")
-			print(oldpath + "==>" + oldpath + fname + ".done")
-			 # fs.renameSync(oldpath + sendfilePath , oldpath + fname + ".done")
-			client.destroy()
-			return
-		
-		print("Transfer failed !!")
-		 # fs.renameSync(oldpath + sendfilePath , oldpath + fname + ".failed")
-		client.destroy()
-	elif CLIENT_STATUS == 3:
-		print("from server")
-		client.write(FILE_CRC.toString())
-		psBar.update(FILE_BUF.length/BLOCK_SIZE)
-		CLIENT_STATUS = 2
-	else :
-		return None
-
 def receive_meta_data(data):
 	print(' \n------ Server Response: ---\n\n', data)
 	dec_tst = rsawrapper.decryptJTS(data, './m2you/zhenqiang/privateKey/zhenqiang.data'); 
@@ -207,7 +99,7 @@ async def send_data(message, loop):
 	reader, writer = await asyncio.open_connection(SERVER_URL, SERVER_PORT, loop=loop)
 	data = sendMetaData()
 	global FILE_CRC
-	print('Send: ',  len(data))
+	# print('Send: ',  len(data))
 	writer.write(data)
 	writer.drain()
 	data = await reader.read(1024)  	
@@ -225,11 +117,12 @@ async def send_data(message, loop):
 	f = open(path, 'rb')
 	for chunk in readInChunks(f, BLOCK_SIZE):
 		data = encrypt_with_aes(filekey, chunk)
-		print('Send data len: ',  len(data))
+		# print('Send data len: ',  len(data))
 		writer.write(data)
 		writer.drain()
 		data = await reader.read(1024)  	
-		print(data)
+		# print(data)
+		rsawrapper.printProgressBar(data_size, file_size, prefix = 'Progress:', suffix = str(data), length = 50)
 		data_size += len(chunk)             
 		if data_size == file_size:
 			break

@@ -19,7 +19,7 @@ STR_SPLIT_LEN = 64
 
 
 class RSAWrapper:
-	def write_keys_to_file(self, out_path, value):		
+	def write_keys_to_file(self, out_path, value):      
 		with open(out_path, 'wb') as fwrite:
 		   fwrite.write(value)
 		   fwrite.close()
@@ -55,31 +55,31 @@ class RSAWrapper:
 		except Exception as ex:
 			ex = None;cipher_text
 
-		priv, pub = self.generate_RSA()		
+		priv, pub = self.generate_RSA()     
 		print('priv : ', priv); 
 		print('pub : ', pub); 
 		
-		out_path = './m2you/roland-frei/privateKey/roland-frei.data'		
-		self.write_keys_to_file(out_path, priv)	
+		out_path = './m2you/roland-frei/privateKey/roland-frei.data'        
+		self.write_keys_to_file(out_path, priv) 
 		
 		out_path = './m2you/zhenqiang/pubKey/roland-frei.data'
 		self.write_keys_to_file(out_path, pub)
 
-	 	# key = NodeRSA({b: })
-		priv, pub = self.generate_RSA()		
+		# key = NodeRSA({b: })
+		priv, pub = self.generate_RSA()     
 		print('priv : ', priv)
 		print('pub : ', pub)
 
 		out_path = './m2you/zhenqiang/pubKey/zhenqiang.data'
-		self.write_keys_to_file(out_path, priv)	
+		self.write_keys_to_file(out_path, priv) 
 	 
 		out_path = './m2you/zhenqiang/privateKey/zhenqiang.data'
-		self.write_keys_to_file(out_path, priv)	
+		self.write_keys_to_file(out_path, priv) 
 	
 	def encryptJTS(self, toEncrypt, relativeOrAbsolutePathToPublicKey):
 		try:
-			pub_key = self.read_key_from_file(relativeOrAbsolutePathToPublicKey)			
-			public_key = RSA.importKey(pub_key)			
+			pub_key = self.read_key_from_file(relativeOrAbsolutePathToPublicKey)            
+			public_key = RSA.importKey(pub_key)         
 			i = 0;
 			len_enc = len(toEncrypt)
 			cipher_text = bytearray()
@@ -87,15 +87,15 @@ class RSAWrapper:
 				start_pos = i;
 				end_pos = min(i + STR_SPLIT_LEN, len_enc)
 				sub_str = toEncrypt[start_pos:end_pos]
-				cipher_text.extend(public_key.encrypt(base64.b64encode(sub_str.encode()), STR_SPLIT_LEN)[0])				
+				cipher_text.extend(public_key.encrypt(base64.b64encode(sub_str.encode()), STR_SPLIT_LEN)[0])                
 				i += STR_SPLIT_LEN
 			return cipher_text
 		except Exception as e:
-			logging.exception(e)			
+			logging.exception(e)            
 		return None
 
 	def decryptJTS(self, toDecrypt, relativeOrAbsolutePathtoPrivateKey):
-		try:		
+		try:        
 			private_key = self.read_key_from_file(relativeOrAbsolutePathtoPrivateKey) 
 			private_key_object = RSA.importKey(private_key)
 			i = 0;
@@ -108,10 +108,10 @@ class RSAWrapper:
 				array = (bytes(toDecrypt[start_pos:end_pos]))
 				decrypted_message = private_key_object.decrypt(array)
 				result.extend(base64.b64decode(decrypted_message))
-				i += STEP			
+				i += STEP           
 			return bytes(result).decode()
 		except Exception as e:
-			logging.exception(e)			
+			logging.exception(e)            
 		return None
 
 	def getCRCCode(self, str_data):
@@ -136,3 +136,23 @@ class RSAWrapper:
 	def make_key(self, origin_key):
 		return bytes("{: <32}".format(origin_key), 'utf8')
 
+	# Print iterations progress
+	def printProgressBar (self, iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
+		"""
+		Call in a loop to create terminal progress bar
+		@params:
+			iteration   - Required  : current iteration (Int)
+			total       - Required  : total iterations (Int)
+			prefix      - Optional  : prefix string (Str)
+			suffix      - Optional  : suffix string (Str)
+			decimals    - Optional  : positive number of decimals in percent complete (Int)
+			length      - Optional  : character length of bar (Int)
+			fill        - Optional  : bar fill character (Str)
+		"""
+		percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+		filledLength = int(length * iteration // total)
+		bar = fill * filledLength + '-' * (length - filledLength)
+		print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
+		# Print New Line on Complete
+		if iteration == total: 
+			print()

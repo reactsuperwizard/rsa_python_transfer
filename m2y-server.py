@@ -59,7 +59,7 @@ class FileTransferProtocal:
 	def write_file(self, real_data):
 		try :   
 			# print(real_data)      
-			with open("./temp.dat", "ab") as write_file_open:           
+			with open(self.FILE_NAME, "ab") as write_file_open:           
 				write_file_open.write(real_data)
 				write_file_open.close()
 			return len(real_data)
@@ -73,12 +73,13 @@ class FileTransferProtocal:
 	# # Keep track of the chat clients
 	def receiveFromClient(self, data):
 		data_len = len(data)                    
-		print("received " + str(self.SERVER_STATUS) + ": " + str(data_len))
+		# print("received " + str(self.SERVER_STATUS) + ": " + str(data_len))
 		if data_len == BLOCK_SIZE or (self.FILE_SIZE - self.FILE_RECIEP_SIZE + IV_LEN == data_len):         
 			last_flag = (self.FILE_SIZE - self.FILE_RECIEP_SIZE + IV_LEN == data_len)
 			real_data = self.decrypt_with_aes(self.CURRENT_FILE_KEY, data)                      
 			self.FILE_RECIEP_SIZE += len(real_data)
 			self.write_file(real_data)			
+			rsawrapper.printProgressBar(self.FILE_RECIEP_SIZE, self.FILE_SIZE, prefix = 'Progress:', suffix = (str(data_len) + ' bytes Received'), length = 50)
 			if last_flag:				
 				self.SERVER_STATUS = Server_status.LASTFILE_STATUS
 			return True
@@ -86,26 +87,26 @@ class FileTransferProtocal:
 			return False
 
 	################# step 1
-	def meta_data_process(self, data):
+	def meta_data_process(self, data):		
 		self.init()       
-		dec = rsawrapper.decryptJTS(data, './m2you/roland-frei/privateKey/roland-frei.data')
-		print("---------received from client---------")
+		dec = rsawrapper.decryptJTS(data, './m2you/roland-frei/privateKey/roland-frei.data')		
+		rsawrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
 		jsonDec = json.loads(dec)
 		if not rsawrapper.checkMetaData(jsonDec):
 			print("\n Check meta data failed!")
 			return
 		self.FILE_SIZE = jsonDec['filesize']    
-		self.FILE_NAME = './m2you/'+jsonDec['to']+'/'+jsonDec['folder']+'/'+jsonDec['filename']             
+		self.FILE_NAME = './temp.dat'
+		# self.FILE_NAME = './m2you/'+jsonDec['to']+'/'+jsonDec['folder']+'/'+jsonDec['filename']             
 		jsonDec['filekey'] = FILE_KEY
 		pub_key_path = './m2you/' + jsonDec['from'] + '/pubKey/' + jsonDec['from'] + '.data'
 		jsonDec['metaCRC'] = str(rsawrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))
 		
 		# print(pub_key_path)
-		enc = rsawrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)
-		print("\n ------ send meta data to client : --------\n")
-		
+		enc = rsawrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)		
+		rsawrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)
 		self.SERVER_STATUS = Server_status.FILETRANS_STATUS
-		write_file_open = open("./temp.dat", "wb")
+		write_file_open = open(self.FILE_NAME, "wb")
 		write_file_open.close()
 		return enc  
 	
@@ -118,7 +119,7 @@ class FileTransferProtocal:
 
 		
 	def data_process(self, data):
-		if self.SERVER_STATUS == Server_status.META_STATUS:
+		if self.SERVER_STATUS == Server_status.META_STATUS:			
 			return self.meta_data_process(data)
 		elif self.SERVER_STATUS == Server_status.FILETRANS_STATUS:
 			return self.filetransfer_process(data)
