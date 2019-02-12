@@ -96,7 +96,7 @@ async def send_data(message, loop):
 	# print('Send: ',  len(data))
 	writer.write(data)
 	writer.drain()
-	data = await reader.read(1024)  		
+	data = await reader.read(4096)  		
 	JsonMeta = receive_meta_data(data)
 	
 	path = './m2you/'+JsonMeta['from']+'/'+JsonMeta['folder']+'/'+JsonMeta['filename']
@@ -139,5 +139,6 @@ loop = asyncio.get_event_loop()
 try :
 	loop.run_until_complete(send_data(message, loop))
 except Exception as ex:
+	traceback.print_exc()
 	print('Erro occure!!')
 loop.close()
