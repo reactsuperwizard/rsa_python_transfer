@@ -149,9 +149,10 @@ class FileTransferProtocal:
 					break
 			print('------------client --------')			
 		except Exception as e:
-			raise		
+			print('------------Exception occure --------')						
 		finally:
 			writer.close()
+			self.init()
 
 
 rsaftp = FileTransferProtocal()
