@@ -18,7 +18,9 @@ logging.debug('This message should go to the log file')
 STR_SPLIT_LEN = 64
 
 
+
 class RSAWrapper:
+
 	def write_keys_to_file(self, out_path, value):      
 		with open(out_path, 'wb') as fwrite:
 		   fwrite.write(value)
@@ -156,3 +158,19 @@ class RSAWrapper:
 		# Print New Line on Complete
 		if iteration == total: 
 			print()
+
+def checkFileExist(filePath):	
+	if os.path.isfile(filePath) == None:
+		print("Can't find", filePath)		
+		return None
+	return filePath
+
+def makeDirPath(filePath):
+	if os.path.isdir(filePath):
+		return 
+	print(filePath)
+	try :
+		os.makedirs(filePath)
+	except Exception as e :		
+		sys.exit()
+

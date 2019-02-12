@@ -1,5 +1,6 @@
 from asyncio import Task, coroutine, get_event_loop
 from components.rsawrapper import RSAWrapper 
+from components import rsawrapper 
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
 from enum import Enum
@@ -16,7 +17,7 @@ IV_LEN = 16
 BLOCK_SIZE = 4096 + IV_LEN
 
 logfile = open("./log/server.log", "a")
-rsawrapper = RSAWrapper()
+rsa_wrapper = RSAWrapper()
 logging.basicConfig(level=logging.DEBUG)
 FILE_KEY = 'random1234'
 
@@ -45,7 +46,7 @@ class FileTransferProtocal:
 		self.FILE_RECIEP_SIZE = 0
 		self.token_index = 0
 		self.FILE_NAME = ""     
-		self.CURRENT_FILE_KEY = rsawrapper.make_key(FILE_KEY)
+		self.CURRENT_FILE_KEY = rsa_wrapper.make_key(FILE_KEY)
 		self.FILE_CRC = 0
 		# print(self.CURRENT_FILE_KEY)
 		
@@ -79,7 +80,7 @@ class FileTransferProtocal:
 			real_data = self.decrypt_with_aes(self.CURRENT_FILE_KEY, data)                      
 			self.FILE_RECIEP_SIZE += len(real_data)
 			self.write_file(real_data)			
-			rsawrapper.printProgressBar(self.FILE_RECIEP_SIZE, self.FILE_SIZE, prefix = 'Progress:', suffix = (str(data_len) + ' bytes Received'), length = 50)
+			rsa_wrapper.printProgressBar(self.FILE_RECIEP_SIZE, self.FILE_SIZE, prefix = 'Progress:', suffix = (str(data_len) + ' bytes Received'), length = 50)
 			if last_flag:				
 				self.SERVER_STATUS = Server_status.LASTFILE_STATUS
 			return True
@@ -89,23 +90,26 @@ class FileTransferProtocal:
 	################# step 1
 	def meta_data_process(self, data):		
 		self.init()       
-		dec = rsawrapper.decryptJTS(data, './m2you/roland-frei/privateKey/roland-frei.data')		
-		rsawrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
+		dec = rsa_wrapper.decryptJTS(data, './m2you/roland-frei/privateKey/roland-frei.data')		
+		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
 		jsonDec = json.loads(dec)
-		if not rsawrapper.checkMetaData(jsonDec):
+		if not rsa_wrapper.checkMetaData(jsonDec):
 			print("\n Check meta data failed!")
 			return
 		self.FILE_SIZE = jsonDec['filesize']    
-		self.FILE_NAME = './temp.dat'
-		# self.FILE_NAME = './m2you/'+jsonDec['to']+'/'+jsonDec['folder']+'/'+jsonDec['filename']             
+		# self.FILE_NAME = './temp.dat'
+		file_save_dir = './m2you/'+jsonDec['to']+'/'+jsonDec['folder']
+		rsawrapper.makeDirPath(file_save_dir)
+		self.FILE_NAME = file_save_dir + '/' + jsonDec['filename']             
 		jsonDec['filekey'] = FILE_KEY
 		pub_key_path = './m2you/' + jsonDec['from'] + '/pubKey/' + jsonDec['from'] + '.data'
-		jsonDec['metaCRC'] = str(rsawrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))
+		jsonDec['metaCRC'] = str(rsa_wrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))
 		
 		# print(pub_key_path)
-		enc = rsawrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)		
-		rsawrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)
+		enc = rsa_wrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)		
+		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)
 		self.SERVER_STATUS = Server_status.FILETRANS_STATUS
+
 		write_file_open = open(self.FILE_NAME, "wb")
 		write_file_open.close()
 		return enc  
@@ -131,19 +135,24 @@ class FileTransferProtocal:
 		return None
 
 	async def file_trans_protocal(self, reader, writer):    
-		while True:
-			data = await reader.read(BLOCK_SIZE)
-			if data == None or len(data) < CRC_CHECK_LEN:
-				break
-			result = self.data_process(data)			
-			# print('resut = ', result)
-			writer.write(result)
-			writer.drain()
-			if(result == b"failed" or result == b"success"):
-				self.init()
-				break
-		print('------------client --------')
-		writer.close()
+		try :
+			while True:
+				data = await reader.read(BLOCK_SIZE)
+				if data == None or len(data) < CRC_CHECK_LEN:
+					break
+				result = self.data_process(data)			
+				# print('resut = ', result)
+				writer.write(result)
+				writer.drain()
+				if(result == b"failed" or result == b"success"):
+					self.init()
+					break
+			print('------------client --------')			
+		except Exception as e:
+			raise		
+		finally:
+			writer.close()
+
 
 rsaftp = FileTransferProtocal()
 loop = asyncio.get_event_loop()
