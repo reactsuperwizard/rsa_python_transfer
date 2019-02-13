@@ -1,3 +1,5 @@
+We must use the python3.7 or higher (https://bugs.python.org/issue33770)
+
 #Python3 client-server with encryption
 1. the client send some encrypted metadata to the server
 2. the server add some infos to the meta dta and send it back to the client
