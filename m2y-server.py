@@ -1,3 +1,4 @@
+import struct
 from asyncio import Task, coroutine, get_event_loop
 from components.rsawrapper import RSAWrapper 
 from components import rsawrapper 
@@ -9,6 +10,8 @@ import asyncio
 import json
 import logging
 import zlib
+import traceback
+from components.rsawrapper import RSAFtpHeader 
 
 SERVER_URL='127.0.0.1'
 SERVER_PORT = 5000
@@ -25,9 +28,11 @@ def writeLog(logStr):
 	logfile.write(logStr)
 
 class Server_status(Enum):
-	META_STATUS = 0
-	FILETRANS_STATUS = 1
-	LASTFILE_STATUS = 2
+
+	HEADER_STATUS = 0
+	META_STATUS = 1
+	FILETRANS_STATUS = 2
+	LASTFILE_STATUS = 3
 
 class FileTransferProtocal:
 	token_index = 0
@@ -38,6 +43,7 @@ class FileTransferProtocal:
 	FILE_NAME = ''
 	SERVER_STATUS = Server_status.META_STATUS
 	write_file_open = None
+	rsa_header = RSAFtpHeader()
 
 	def init(self):
 		self.SERVER_STATUS = Server_status.META_STATUS
@@ -48,6 +54,7 @@ class FileTransferProtocal:
 		self.FILE_NAME = ""     
 		self.CURRENT_FILE_KEY = rsa_wrapper.make_key(FILE_KEY)
 		self.FILE_CRC = 0
+		self.rsa_header = RSAFtpHeader()
 		# print(self.CURRENT_FILE_KEY)
 		
 	def decrypt_with_aes(self, key, ciphertext):
@@ -88,6 +95,17 @@ class FileTransferProtocal:
 			return False
 
 	################# step 1
+	def header_data_process(self, data):				
+		self.init()
+		rsaHeader = RSAFtpHeader()
+		read_data = struct.unpack('lll', data)
+		rsaHeader.meta_len = read_data[0]
+		rsaHeader.from_user = read_data[1]
+		rsaHeader.to_user = read_data[2]
+		print(str(rsaHeader.meta_len) + ":" + str(rsaHeader.from_user) + ":" + str(rsaHeader.to_user))		
+		self.SERVER_STATUS = Server_status.META_STATUS
+		return b'accepted'
+	# step 2
 	def meta_data_process(self, data):		
 		self.init()       
 		dec = rsa_wrapper.decryptJTS(data, './m2you/roland-frei/privateKey/roland-frei.data')		
@@ -123,8 +141,10 @@ class FileTransferProtocal:
 
 		
 	def data_process(self, data):
-		if self.SERVER_STATUS == Server_status.META_STATUS:			
-			return self.meta_data_process(data)
+		if self.SERVER_STATUS == Server_status.HEADER_STATUS:			
+			return self.header_data_process(data)
+		elif self.SERVER_STATUS == Server_status.META_STATUS:			
+			return self.meta_data_process(data)					
 		elif self.SERVER_STATUS == Server_status.FILETRANS_STATUS:
 			return self.filetransfer_process(data)
 		elif self.SERVER_STATUS == Server_status.LASTFILE_STATUS:

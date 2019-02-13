@@ -1,3 +1,4 @@
+import struct
 import asyncio
 import os
 import sys
@@ -9,8 +10,10 @@ import zlib
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
 from components.rsawrapper import RSAWrapper 
+from components.rsawrapper import RSAFtpHeader 
 from components import rsawrapper
 from collections import OrderedDict
+
 
 SERVER_URL='127.0.0.1'
 SERVER_PORT = 5000
@@ -27,6 +30,7 @@ logFile = open("./log/client.log", "a")
 dirpath = os.getcwd()
 sendfilePath = dirpath + sys.argv[1]
 rsa_wrapper = RSAWrapper()
+rsa_header = RSAFtpHeader()
 
 
 
@@ -50,7 +54,11 @@ def sendMetaData() :
 	json_meta_str = json.dumps(JsonMeta, sort_keys=True)    
 	checkSum = rsa_wrapper.getCRCCode(json_meta_str)
 	JsonMeta['metaCRC'] = str(checkSum)	
-	return rsa_wrapper.encryptJTS(json.dumps(JsonMeta), './m2you/'+JsonMeta['from']+'/pubKey/'+JsonMeta['to']+'.data')   
+	json_meta_str = json.dumps(JsonMeta)
+	rsa_header.meta_len = len(json_meta_str)
+	rsa_header.from_user = 1
+	rsa_header.to_user = 2
+	return rsa_wrapper.encryptJTS(json_meta_str, './m2you/'+JsonMeta['from']+'/pubKey/'+JsonMeta['to']+'.data')
 	
 
 
@@ -90,9 +98,10 @@ def receive_meta_data(data):
 	return JsonMeta
 
 async def send_data(message, loop):
+	global FILE_CRC
 	reader, writer = await asyncio.open_connection(SERVER_URL, SERVER_PORT, loop=loop)
 	data = sendMetaData()
-	global FILE_CRC
+
 	# print('Send: ',  len(data))
 	writer.write(data)
 	writer.drain()

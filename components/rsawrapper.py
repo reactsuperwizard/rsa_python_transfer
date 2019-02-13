@@ -174,3 +174,7 @@ def makeDirPath(filePath):
 	except Exception as e :		
 		sys.exit()
 
+class RSAFtpHeader:
+	meta_len = 0
+	from_user = 0
+	to_user	 = 0
