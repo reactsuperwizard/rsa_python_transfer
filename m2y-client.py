@@ -1,5 +1,6 @@
 import struct
 import asyncio
+import traceback
 import os
 import sys
 import codecs
@@ -37,6 +38,7 @@ rsa_header = RSAFtpHeader()
 
 
 def sendMetaData() :
+	global rsa_header
 	meta_filepath = rsawrapper.checkFileExist(sendfilePath)
 	if meta_filepath == None :
 		return None
@@ -99,9 +101,17 @@ def receive_meta_data(data):
 
 async def send_data(message, loop):
 	global FILE_CRC
+	global rsa_header
 	reader, writer = await asyncio.open_connection(SERVER_URL, SERVER_PORT, loop=loop)
-	data = sendMetaData()
 
+
+	data = sendMetaData()
+	print(rsa_header.meta_len)	
+	output = struct.pack('lll',rsa_header.meta_len, rsa_header.from_user, rsa_header.to_user)
+	print(output)
+	writer.write(output)	
+	writer.drain()
+	read_data = await reader.read(4096)  		
 	# print('Send: ',  len(data))
 	writer.write(data)
 	writer.drain()

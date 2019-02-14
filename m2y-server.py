@@ -41,12 +41,12 @@ class FileTransferProtocal:
 	FILE_SIZE = 0
 	FILE_RECIEP_SIZE = 0
 	FILE_NAME = ''
-	SERVER_STATUS = Server_status.META_STATUS
+	SERVER_STATUS = Server_status.HEADER_STATUS
 	write_file_open = None
 	rsa_header = RSAFtpHeader()
 
 	def init(self):
-		self.SERVER_STATUS = Server_status.META_STATUS
+		self.SERVER_STATUS = Server_status.HEADER_STATUS
 		self.token_index = 0
 		self.BUF_SIZE = 0
 		self.FILE_RECIEP_SIZE = 0
@@ -96,18 +96,16 @@ class FileTransferProtocal:
 
 	################# step 1
 	def header_data_process(self, data):				
-		self.init()
-		rsaHeader = RSAFtpHeader()
 		read_data = struct.unpack('lll', data)
-		rsaHeader.meta_len = read_data[0]
-		rsaHeader.from_user = read_data[1]
-		rsaHeader.to_user = read_data[2]
-		print(str(rsaHeader.meta_len) + ":" + str(rsaHeader.from_user) + ":" + str(rsaHeader.to_user))		
+		self.rsa_header = RSAFtpHeader()
+		self.rsa_header.meta_len = read_data[0]
+		self.rsa_header.from_user = read_data[1]
+		self.rsa_header.to_user = read_data[2]
+		print(str(self.rsa_header.meta_len) + ":" + str(self.rsa_header.from_user) + ":" + str(self.rsa_header.to_user))		
 		self.SERVER_STATUS = Server_status.META_STATUS
 		return b'accepted'
 	# step 2
-	def meta_data_process(self, data):		
-		self.init()       
+	def meta_data_process(self, data):
 		dec = rsa_wrapper.decryptJTS(data, './m2you/roland-frei/privateKey/roland-frei.data')		
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
 		jsonDec = json.loads(dec)
@@ -140,7 +138,7 @@ class FileTransferProtocal:
 			return b'resend'
 
 		
-	def data_process(self, data):
+	def main_data_process(self, data):
 		if self.SERVER_STATUS == Server_status.HEADER_STATUS:			
 			return self.header_data_process(data)
 		elif self.SERVER_STATUS == Server_status.META_STATUS:			
@@ -155,12 +153,13 @@ class FileTransferProtocal:
 		return None
 
 	async def file_trans_protocal(self, reader, writer):    
+		self.init()
 		try :
 			while True:
-				data = await reader.read(BLOCK_SIZE)
+				data = await reader.read(BLOCK_SIZE)					
 				if data == None or len(data) < CRC_CHECK_LEN:
 					break
-				result = self.data_process(data)			
+				result = self.main_data_process(data)
 				# print('resut = ', result)
 				writer.write(result)
 				writer.drain()
@@ -170,6 +169,7 @@ class FileTransferProtocal:
 			print('------------client --------')			
 		except Exception as e:
 			print('------------Exception occure --------')						
+			traceback.print_exc()
 		finally:
 			writer.close()
 			self.init()
