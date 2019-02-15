@@ -108,17 +108,24 @@ class FileTransferProtocal:
 	def meta_data_process(self, data):
 		dec = rsa_wrapper.decryptJTS(data, './m2you/roland-frei/privateKey/roland-frei.data')		
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
-		jsonDec = json.loads(dec)
+		jsonDec = json.loads(dec)		
+		##### checking length header
+		len_json = len(json.dumps(jsonDec));
+		if int(self.rsa_header.meta_len) != len_json :
+			print("\n Check meta data length is different!" + str(self.rsa_header.meta_len) + ":" + str(len_json))
+			return 'failed'
 		if not rsa_wrapper.checkMetaData(jsonDec):
 			print("\n Check meta data failed!")
-			return
+			return 'failed'
+		jsonDec['meta_len'] = len_json;
 		self.FILE_SIZE = jsonDec['filesize']    
 		# self.FILE_NAME = './temp.dat'
 		file_save_dir = './m2you/'+jsonDec['to']+'/'+jsonDec['folder']
 		rsawrapper.makeDirPath(file_save_dir)
 		self.FILE_NAME = file_save_dir + '/' + jsonDec['filename']             
 		jsonDec['filekey'] = FILE_KEY
-		pub_key_path = './m2you/' + jsonDec['from'] + '/pubKey/' + jsonDec['from'] + '.data'
+		pub_key_path = './m2you/' + jsonDec['to'] + '/pubKey/' + jsonDec['from'] + '.data'
+		print(pub_key_path)
 		jsonDec['metaCRC'] = str(rsa_wrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))
 		
 		# print(pub_key_path)

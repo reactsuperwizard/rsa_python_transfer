@@ -40,7 +40,7 @@ def read_key(filepath):
 
 
 rsa = RSAWrapper()
-# prv_key, pub_key = rsa.generate_RSA()
+prv_key, pub_key = rsa.generate_RSA()
 rsa.generateRSAKey();
 
 out_path = './m2you/zhenqiang/pubKey/roland-frei.data'
@@ -49,7 +49,7 @@ out_path = './m2you/roland-frei/privateKey/roland-frei.data'
 prv_key = read_key(out_path)
 test_rsa_key(pub_key, prv_key)
 
-out_path = './m2you/zhenqiang/pubKey/zhenqiang.data'
+out_path = './m2you/roland-frei/pubKey/zhenqiang.data'
 pub_key = read_key(out_path) 
 out_path = './m2you/zhenqiang/privateKey/zhenqiang.data'		
 prv_key = read_key(out_path)
