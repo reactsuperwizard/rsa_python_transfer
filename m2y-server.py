@@ -12,6 +12,8 @@ import logging
 import zlib
 import traceback
 from components.rsawrapper import RSAFtpHeader 
+import datetime
+
 
 SERVER_URL='127.0.0.1'
 SERVER_PORT = 5000
@@ -136,9 +138,9 @@ class FileTransferProtocal:
 		rsawrapper.makeDirPath(meta_file_path);
 		meta_file_name = meta_file_path + jsonDec['from'] + "-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".meta";
 
-		# with open(meta_file_name, 'w') as meta_file_open:
-  #   		meta_file_open.write('whatever')
-  #   		meta_file_open.close();
+		with open(meta_file_name, 'w') as meta_file_open:
+			meta_file_open.write(json.dumps(jsonDec))
+			meta_file_open.close();
 
 		write_file_open = open(self.FILE_NAME, "wb")
 		write_file_open.close()
