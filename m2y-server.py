@@ -101,7 +101,7 @@ class FileTransferProtocal:
 		self.rsa_header.meta_len = read_data[0]
 		self.rsa_header.from_user = read_data[1]
 		self.rsa_header.to_user = read_data[2]
-		print(str(self.rsa_header.meta_len) + ":" + str(self.rsa_header.from_user) + ":" + str(self.rsa_header.to_user))		
+		print(str(self.rsa_header.meta_len) + ":" + str(self.rsa_header.from_user) + ":" + str(self.rsa_header.to_user))
 		self.SERVER_STATUS = Server_status.META_STATUS
 		return b'accepted'
 	# step 2
@@ -132,6 +132,13 @@ class FileTransferProtocal:
 		enc = rsa_wrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)		
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)
 		self.SERVER_STATUS = Server_status.FILETRANS_STATUS
+		meta_file_path = file_save_dir + '/' + jsonDec['to'] + '/';		
+		rsawrapper.makeDirPath(meta_file_path);
+		meta_file_name = meta_file_path + jsonDec['from'] + "-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".meta";
+
+		# with open(meta_file_name, 'w') as meta_file_open:
+  #   		meta_file_open.write('whatever')
+  #   		meta_file_open.close();
 
 		write_file_open = open(self.FILE_NAME, "wb")
 		write_file_open.close()

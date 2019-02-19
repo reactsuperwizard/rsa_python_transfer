@@ -155,7 +155,7 @@ class RSAWrapper:
 		filledLength = int(length * iteration // total)
 		bar = fill * filledLength + '-' * (length - filledLength)
 		print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
-		# Print New Line on Complete
+		# Print New Line on Completels
 		if iteration == total: 
 			print()
 
