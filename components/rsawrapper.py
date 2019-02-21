@@ -84,7 +84,7 @@ class RSAWrapper:
 				start_pos = i
 				end_pos = min(i + STR_SPLIT_LEN, len_enc)
 				sub_str = toEncrypt[start_pos:end_pos]
-				cipher_text.extend(public_key.encrypt(base64.b64encode(sub_str.encode()), STR_SPLIT_LEN)[0])                
+				cipher_text.extend(public_key.encrypt(sub_str.encode(), STR_SPLIT_LEN)[0])                
 				i += STR_SPLIT_LEN
 			return cipher_text
 		except Exception as e:
@@ -104,7 +104,7 @@ class RSAWrapper:
 				end_pos = min(i + STEP, len_enc)
 				array = (bytes(toDecrypt[start_pos:end_pos]))
 				decrypted_message = private_key_object.decrypt(array)
-				result.extend(base64.b64decode(decrypted_message))
+				result.extend(decrypted_message)
 				i += STEP           
 			return bytes(result).decode()
 		except Exception as e:
