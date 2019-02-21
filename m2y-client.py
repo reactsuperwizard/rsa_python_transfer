@@ -33,10 +33,6 @@ sendfilePath = dirpath + sys.argv[1]
 rsa_wrapper = RSAWrapper()
 rsa_header = RSAFtpHeader()
 
-
-
-
-
 def sendMetaData() :
 	global rsa_header
 	meta_filepath = rsawrapper.checkFileExist(sendfilePath)
@@ -62,8 +58,6 @@ def sendMetaData() :
 	rsa_header.to_user = 2
 	return rsa_wrapper.encryptJTS(json_meta_str, './m2you/'+JsonMeta['from']+'/pubKey/'+JsonMeta['to']+'.data')
 	
-
-
 def encrypt_with_aes(key, plaintext):
 	global FILE_CRC
 	iv = os.urandom(16)	
@@ -86,29 +80,25 @@ def readInChunks(fileObj, chunkSize=2048):
 def receive_meta_data(data):
 	dec_txt = rsa_wrapper.decryptJTS(data, './m2you/zhenqiang/privateKey/zhenqiang.data'); 
 	JsonMeta = json.loads(dec_txt)
-	print('------ Server Response: --- \n', dec_txt)
-
 	if not rsa_wrapper.checkMetaData(JsonMeta):
 		print("\ncrc check failed!")
 		return None
-
+	print("---- crc check success! ---- ")
 	FILE_KEY = JsonMeta['filekey']
-	
-	print("\n---- crc check success! ---- \n")
-	print("\n------- start send file ---------\n")
+	print("------- start send file ---------")
 	print("file key : ", FILE_KEY);               
 	return JsonMeta
 
-async def send_data(message, loop):
+async def send_data(loop):
 	global FILE_CRC
 	global rsa_header
 	reader, writer = await asyncio.open_connection(SERVER_URL, SERVER_PORT, loop=loop)
 
 
 	data = sendMetaData()
-	print(rsa_header.meta_len)	
+	# print(rsa_header.meta_len)	
 	output = struct.pack('lll',rsa_header.meta_len, rsa_header.from_user, rsa_header.to_user)
-	print(output)
+	# print(output)
 	writer.write(output)	
 	writer.drain()
 	read_data = await reader.read(4096)  		
@@ -122,9 +112,9 @@ async def send_data(message, loop):
 	print(path)
 	filekey = JsonMeta['filekey']
 	file_size = JsonMeta['filesize']
-	print(len(filekey))
+	# print(len(filekey))
 	filekey = rsa_wrapper.make_key(filekey)
-	print(len(filekey))	
+	# print(len(filekey))	
 	data_size = 0
 	f = open(path, 'rb')
 	for chunk in readInChunks(f, BLOCK_SIZE):
@@ -153,10 +143,9 @@ async def send_data(message, loop):
 
 	print('Close the socket')
 
-message = 'Hello World!'
 loop = asyncio.get_event_loop()
 try :
-	loop.run_until_complete(send_data(message, loop))
+	loop.run_until_complete(send_data(loop))
 except Exception as ex:
 	traceback.print_exc()
 	print('Erro occure!!')

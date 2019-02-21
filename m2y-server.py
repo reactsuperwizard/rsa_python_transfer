@@ -80,7 +80,7 @@ class FileTransferProtocal:
 	def check_crc_file_part(self, data, crc_token):
 		return int(data) == int(crc_token)
 
-	# # Keep track of the chat clients
+	# Keep track of the chat clients
 	def receiveFromClient(self, data):
 		data_len = len(data)                    
 		# print("received " + str(self.SERVER_STATUS) + ": " + str(data_len))
@@ -96,7 +96,7 @@ class FileTransferProtocal:
 		else : 
 			return False
 
-	################# step 1
+	# step 1
 	def header_data_process(self, data):				
 		read_data = struct.unpack('lll', data)
 		self.rsa_header = RSAFtpHeader()
@@ -111,7 +111,7 @@ class FileTransferProtocal:
 		dec = rsa_wrapper.decryptJTS(data, './m2you/roland-frei/privateKey/roland-frei.data')		
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
 		jsonDec = json.loads(dec)		
-		##### checking length header
+		# checking length header
 		len_json = len(json.dumps(jsonDec));
 		if int(self.rsa_header.meta_len) != len_json :
 			print("\n Check meta data length is different!" + str(self.rsa_header.meta_len) + ":" + str(len_json))
