@@ -14,10 +14,7 @@ import zlib
 import json
 
 logging.basicConfig(level=logging.DEBUG)
-logging.debug('This message should go to the log file')
 STR_SPLIT_LEN = 64
-
-
 
 class RSAWrapper:
 
@@ -43,7 +40,6 @@ class RSAWrapper:
 		private_key = new_key.exportKey("PEM") 
 		return private_key, public_key
 	
-	
 	def generateRSAKey(self):
 		try:
 			if not os.path.exists('./m2you/zhenqiang/privateKey'):
@@ -67,7 +63,6 @@ class RSAWrapper:
 		out_path = './m2you/zhenqiang/pubKey/roland-frei.data'
 		self.write_keys_to_file(out_path, pub)
 
-		# key = NodeRSA({b: })
 		priv, pub = self.generate_RSA()     
 		print('priv : ', priv)
 		print('pub : ', pub)
@@ -82,11 +77,11 @@ class RSAWrapper:
 		try:
 			pub_key = self.read_key_from_file(relativeOrAbsolutePathToPublicKey)            
 			public_key = RSA.importKey(pub_key)         
-			i = 0;
+			i = 0
 			len_enc = len(toEncrypt)
 			cipher_text = bytearray()
 			while(i < len_enc):
-				start_pos = i;
+				start_pos = i
 				end_pos = min(i + STR_SPLIT_LEN, len_enc)
 				sub_str = toEncrypt[start_pos:end_pos]
 				cipher_text.extend(public_key.encrypt(base64.b64encode(sub_str.encode()), STR_SPLIT_LEN)[0])                
@@ -100,12 +95,12 @@ class RSAWrapper:
 		try:        
 			private_key = self.read_key_from_file(relativeOrAbsolutePathtoPrivateKey) 
 			private_key_object = RSA.importKey(private_key)
-			i = 0;
+			i = 0
 			len_enc = len(toDecrypt)
 			result = bytearray()
 			STEP = 256
 			while(i < len_enc):
-				start_pos = i;
+				start_pos = i
 				end_pos = min(i + STEP, len_enc)
 				array = (bytes(toDecrypt[start_pos:end_pos]))
 				decrypted_message = private_key_object.decrypt(array)
@@ -139,18 +134,7 @@ class RSAWrapper:
 		return bytes("{: <32}".format(origin_key), 'utf8')
 
 	# Print iterations progress
-	def printProgressBar (self, iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
-		"""
-		Call in a loop to create terminal progress bar
-		@params:
-			iteration   - Required  : current iteration (Int)
-			total       - Required  : total iterations (Int)
-			prefix      - Optional  : prefix string (Str)
-			suffix      - Optional  : suffix string (Str)
-			decimals    - Optional  : positive number of decimals in percent complete (Int)
-			length      - Optional  : character length of bar (Int)
-			fill        - Optional  : bar fill character (Str)
-		"""
+	def printProgressBar (self, iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):		
 		percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
 		filledLength = int(length * iteration // total)
 		bar = fill * filledLength + '-' * (length - filledLength)

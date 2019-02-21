@@ -112,14 +112,14 @@ class FileTransferProtocal:
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
 		jsonDec = json.loads(dec)		
 		# checking length header
-		len_json = len(json.dumps(jsonDec));
+		len_json = len(json.dumps(jsonDec))
 		if int(self.rsa_header.meta_len) != len_json :
 			print("\n Check meta data length is different!" + str(self.rsa_header.meta_len) + ":" + str(len_json))
 			return 'failed'
 		if not rsa_wrapper.checkMetaData(jsonDec):
 			print("\n Check meta data failed!")
 			return 'failed'
-		jsonDec['meta_len'] = len_json;
+		jsonDec['meta_len'] = len_json
 		self.FILE_SIZE = jsonDec['filesize']    
 		# self.FILE_NAME = './temp.dat'
 		file_save_dir = './m2you/'+jsonDec['to']+'/'+jsonDec['folder']
@@ -135,12 +135,12 @@ class FileTransferProtocal:
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)
 		self.SERVER_STATUS = Server_status.FILETRANS_STATUS
 		meta_file_path = file_save_dir + '/' + jsonDec['to'] + '/';		
-		rsawrapper.makeDirPath(meta_file_path);
-		meta_file_name = meta_file_path + jsonDec['from'] + "-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".meta";
+		rsawrapper.makeDirPath(meta_file_path)
+		meta_file_name = meta_file_path + jsonDec['from'] + "-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".meta"
 
 		with open(meta_file_name, 'w') as meta_file_open:
 			meta_file_open.write(json.dumps(jsonDec))
-			meta_file_open.close();
+			meta_file_open.close()
 
 		write_file_open = open(self.FILE_NAME, "wb")
 		write_file_open.close()
@@ -152,7 +152,6 @@ class FileTransferProtocal:
 			return b'accepted'
 		else :
 			return b'resend'
-
 		
 	def main_data_process(self, data):
 		if self.SERVER_STATUS == Server_status.HEADER_STATUS:			
@@ -190,13 +189,11 @@ class FileTransferProtocal:
 			writer.close()
 			self.init()
 
-
 rsaftp = FileTransferProtocal()
 loop = asyncio.get_event_loop()
 coro = asyncio.start_server(rsaftp.file_trans_protocal, SERVER_URL, SERVER_PORT, loop=loop)
 server = loop.run_until_complete(coro)
 
-# Serve requests until Ctrl+C is pressed
 print('Serving on {}'.format(server.sockets[0].getsockname()))
 try:
 	loop.run_forever()

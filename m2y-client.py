@@ -15,7 +15,6 @@ from components.rsawrapper import RSAFtpHeader
 from components import rsawrapper
 from collections import OrderedDict
 
-
 SERVER_URL='127.0.0.1'
 SERVER_PORT = 5000
 CLIENT_STATUS = 0
@@ -38,7 +37,7 @@ def sendMetaData() :
 	meta_filepath = rsawrapper.checkFileExist(sendfilePath)
 	if meta_filepath == None :
 		return None
-	JsonMeta = None;
+	JsonMeta = None
 	with io.open(meta_filepath, 'r', encoding='utf8') as meta_info:
 		JsonMeta = json.load(meta_info)         
 	if(JsonMeta == None):
@@ -66,7 +65,6 @@ def encrypt_with_aes(key, plaintext):
 	FILE_CRC ^= zlib.crc32(plaintext)
 	return ciphertext
 
-
 def writeLog(logStr):
 	logFile.appendFileSync("./log/client.log", logStr)
 
@@ -93,7 +91,6 @@ async def send_data(loop):
 	global FILE_CRC
 	global rsa_header
 	reader, writer = await asyncio.open_connection(SERVER_URL, SERVER_PORT, loop=loop)
-
 
 	data = sendMetaData()
 	# print(rsa_header.meta_len)	
