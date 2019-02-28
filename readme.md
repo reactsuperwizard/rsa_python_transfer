@@ -93,3 +93,56 @@ files on roland-frei (server computer)
 running the scripts
 python.exe m2y-client.py /m2y/zhenqiang/photo/myfoto.meta
 python.exe m2y-server.py
+
+
+###################################################################
+#                       ZhenHaoyun's Task                         #
+###################################################################
+
+M2y
+m2y i a universal peer to peer communcation protocol, that is flexible, secure and reliable.
+
+currently we can transfer meta data and a file from client to server.
+the next step is to add config based scripting
+
+M2Y-FOLDER		
+in m2y every kind of communication has his “m2y-folder” … 
+in this m2y-folder it stores all data and configuration.
+
+every m2y-folder has 
+one m2y.config file 
+many pairs of META and DATA files
+
+currently we have the m2y folder “foto”
+it means that we make a service to upload fotos to a server 
+(it is just one example of possible services)
+
+M2Y-CONFIG
+m2y/foto/m2y.config
+[OnMeta]
+m2yCheckPermission.py 
+[OnStartup]
+m2yResetAllFiles.py
+[OnReceived]
+m2yNotifyUser.py
+[OnNew]
+[OnChanged]
+[OnDeleted]
+[permission]
+
+roland-frei	= allways
+peter-norton	= no
+
+this is the configuration file of the m2y-folder “foto” 
+you can see the section [OnMeta], it defines the script that is executed when we the server has received the json meta data.
+
+1. Add to m2y-server.py that when meta data is received, it opens the m2y.config (of json.folder) , check the section [OnMeta] and execute the script m2yCheckPermission.py, passing the filename of the metadata. (you must store the meta data to file before call the script). when the script is executde, read the metadata agin and check if json.error==”” (is empty) if so continue, if there is a error, send the json with the error to the client and dont go to receive the data. (executeScript(section))
+2. when the binary file is received completely, execute the scripts [OnReceived]
+3. You can write the m2yCheckPermission.py, it read the m2y.config file, check the section [permission] and look if the json.from name is listed there (with = allways) , if not write to the meta data json.error=’no permission’, store the meta to file, and exit
+the scripts are stored in /m2y/scripts/
+
+
+
+
+
+

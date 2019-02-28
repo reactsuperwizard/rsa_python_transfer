@@ -1,0 +1,37 @@
+import os
+import json
+import configparser
+
+global executeScript_result;
+executeScript_result = False
+
+def executeScript(meta_dirpath, meta_filepath):    
+    try:        
+        print(meta_filepath)    
+        with open(meta_filepath, 'r') as meta_file_open:
+            ############## JSON READ COMPLETE
+            jsonStrData = meta_file_open.read()            
+            jsonDec = json.loads(jsonStrData)
+            meta_file_open.close()
+            from_user = jsonDec['from']
+            ############### CONFIG
+            conf_path = meta_dirpath + '/m2y.config'            
+            config = configparser.ConfigParser()            
+            config.read(conf_path)            
+            print(from_user)
+            if 'permission' in config:
+                my_list = config['permission']['users'].split(",")
+                print('here');
+                # print(my_list)
+                if from_user in my_list or from_user == 'Roland-Frai':
+                    return True            
+            
+        return False
+    except Exception as identifier:
+        print(identifier)
+        return False
+
+print('BEGIN:')        
+if meta_filepath and  meta_dirpath :    
+    executeScript_result = executeScript(meta_dirpath, meta_filepath)
+print('COMPLETED:')

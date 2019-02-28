@@ -1,19 +1,22 @@
-import struct
-from asyncio import Task, coroutine, get_event_loop
-from components.rsawrapper import RSAWrapper 
-from components import rsawrapper 
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
+from asyncio import Task, coroutine, get_event_loop
+from components import rsawrapper 
+from components.rsawrapper import RSAFtpHeader 
+from components.rsawrapper import RSAWrapper 
 from enum import Enum
 from socket import socket, SO_REUSEADDR, SOL_SOCKET
+
 import asyncio
+import configparser
+import datetime
 import json
 import logging
-import zlib
+import os
+import struct
+import sys
 import traceback
-from components.rsawrapper import RSAFtpHeader 
-import datetime
-
+import zlib
 
 SERVER_URL='127.0.0.1'
 SERVER_PORT = 5000
@@ -26,8 +29,19 @@ rsa_wrapper = RSAWrapper()
 logging.basicConfig(level=logging.DEBUG)
 FILE_KEY = 'random1234'
 
+
+
 def writeLog(logStr):
 	logfile.write(logStr)
+
+   
+	
+
+def read_configFile(meta_dirpath):
+	conf_path = meta_dirpath + '/m2y.config'
+	config = configparser.ConfigParser()
+	config.read(conf_path)
+	return config
 
 class Server_status(Enum):
 
@@ -46,7 +60,11 @@ class FileTransferProtocal:
 	SERVER_STATUS = Server_status.HEADER_STATUS
 	write_file_open = None
 	rsa_header = RSAFtpHeader()
+	config = None
+	
+	
 
+	###############################
 	def init(self):
 		self.SERVER_STATUS = Server_status.HEADER_STATUS
 		self.token_index = 0
@@ -57,8 +75,30 @@ class FileTransferProtocal:
 		self.CURRENT_FILE_KEY = rsa_wrapper.make_key(FILE_KEY)
 		self.FILE_CRC = 0
 		self.rsa_header = RSAFtpHeader()
+		self.config = None
 		# print(self.CURRENT_FILE_KEY)
+
+	#########################################
+	def execute_script(self, script_path, localsParameter = None):
+		run_script = './scripts/' + script_path
+		with open(run_script, "r") as script_file:
+			if localsParameter:				
+				file_content = script_file.read()
+				script_file.close()				
+				exec(file_content, globals(), localsParameter)					
+			else :
+				exec(script_file.read())
+			script_file.close()
+		return True
 		
+
+	# ###################################
+	def check_meta_in_conf(self, config, meta_name):
+		if meta_name in config:
+			return True
+		return False
+
+	###################################
 	def decrypt_with_aes(self, key, ciphertext):
 		iv = ciphertext[:16]            
 		aes = AES.new(key, AES.MODE_CFB, iv)
@@ -66,6 +106,7 @@ class FileTransferProtocal:
 		self.FILE_CRC ^= zlib.crc32(plaintext)
 		return plaintext
 
+	##############################
 	def write_file(self, real_data):
 		try :   
 			# print(real_data)      
@@ -76,11 +117,12 @@ class FileTransferProtocal:
 		except Exception as e:
 			print("Can't write file");
 		return 0
-
+	
+	###################################
 	def check_crc_file_part(self, data, crc_token):
 		return int(data) == int(crc_token)
 
-	# Keep track of the chat clients
+	################# Keep track of the chat clients
 	def receiveFromClient(self, data):
 		data_len = len(data)                    
 		# print("received " + str(self.SERVER_STATUS) + ": " + str(data_len))
@@ -96,7 +138,7 @@ class FileTransferProtocal:
 		else : 
 			return False
 
-	# step 1
+	######### step 1
 	def header_data_process(self, data):				
 		read_data = struct.unpack('lll', data)
 		self.rsa_header = RSAFtpHeader()
@@ -106,7 +148,8 @@ class FileTransferProtocal:
 		print(str(self.rsa_header.meta_len) + ":" + str(self.rsa_header.from_user) + ":" + str(self.rsa_header.to_user))
 		self.SERVER_STATUS = Server_status.META_STATUS
 		return b'accepted'
-	# step 2
+
+	########## step 2
 	def meta_data_process(self, data):
 		dec = rsa_wrapper.decryptJTS(data, './m2you/roland-frei/privateKey/roland-frei.data')		
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
@@ -131,20 +174,30 @@ class FileTransferProtocal:
 		jsonDec['metaCRC'] = str(rsa_wrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))
 		
 		# print(pub_key_path)
-		enc = rsa_wrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)		
+		enc = rsa_wrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)				
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)
 		self.SERVER_STATUS = Server_status.FILETRANS_STATUS
-		meta_file_path = file_save_dir + '/' + jsonDec['to'] + '/';		
-		rsawrapper.makeDirPath(meta_file_path)
-		meta_file_name = meta_file_path + jsonDec['from'] + "-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".meta"
 
-		with open(meta_file_name, 'w') as meta_file_open:
+		meta_dirpath = file_save_dir + '/' + jsonDec['to'] + '/';		
+		rsawrapper.makeDirPath(meta_dirpath)
+		meta_filepath = meta_dirpath + jsonDec['from'] + "-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".meta"		
+
+		with open(meta_filepath, 'w') as meta_file_open:
 			meta_file_open.write(json.dumps(jsonDec))
 			meta_file_open.close()
-
 		write_file_open = open(self.FILE_NAME, "wb")
-		write_file_open.close()
-		return enc  
+		write_file_open.close()		
+		
+		# read config file path 
+		self.config = read_configFile('./m2you/' + jsonDec['to'])
+		if self.check_meta_in_conf(self.config, 'OnMeta') and self.check_meta_in_conf(self.config['OnMeta'], 'execute'):
+			data_param = {'meta_dirpath': './m2you/' + jsonDec['to'], 'meta_filepath': meta_filepath, 'result' :'False'}			
+			self.execute_script(self.config['OnMeta']['execute'], data_param);
+			global executeScript_result
+			print(executeScript_result)
+			if executeScript_result:
+				return enc  
+		return b"failed"		
 	
 	def filetransfer_process(self, data):       
 		if self.receiveFromClient(data):
@@ -163,7 +216,9 @@ class FileTransferProtocal:
 		elif self.SERVER_STATUS == Server_status.LASTFILE_STATUS:
 			if not self.check_crc_file_part(data, self.FILE_CRC):
 				return b"failed"
-			else :
+			else :    			
+				if self.check_meta_in_conf(self.config, 'OnReceived') and self.check_meta_in_conf(self.config['OnReceived'], 'execute'):
+					self.execute_script(self.config['OnReceived']['execute']);
 				return b"success"
 		return None
 
