@@ -62,8 +62,6 @@ class FileTransferProtocal:
 	write_file_open = None
 	rsa_header = RSAFtpHeader()
 	config = None
-	
-	
 
 	###############################
 	def init(self):
@@ -152,9 +150,9 @@ class FileTransferProtocal:
 
 	########## step 2
 	def meta_data_process(self, data):
-		dec = rsa_wrapper.decryptJTS(data, './m2you/roland-frei/privateKey/roland-frei.data')		
+		dec = rsa_wrapper.decryptJTS(data, './m2you/user/roland-frei/privateKey/roland-frei.data')
+		jsonDec = json.loads(dec)
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
-		jsonDec = json.loads(dec)		
 		# checking length header
 		len_json = len(json.dumps(jsonDec))
 		if int(self.rsa_header.meta_len) != len_json :
@@ -166,11 +164,11 @@ class FileTransferProtocal:
 		jsonDec['meta_len'] = len_json
 		self.FILE_SIZE = jsonDec['filesize']    
 		# self.FILE_NAME = './temp.dat'
-		file_save_dir = './m2you/'+jsonDec['to']+'/'+jsonDec['folder']
+		file_save_dir = './m2you/user/' + jsonDec['to']+'/'+jsonDec['folder']
 		rsawrapper.makeDirPath(file_save_dir)
 		self.FILE_NAME = file_save_dir + '/' + jsonDec['filename']             
 		jsonDec['filekey'] = FILE_KEY
-		pub_key_path = './m2you/' + jsonDec['to'] + '/pubKey/' + jsonDec['from'] + '.data'
+		pub_key_path = './m2you/user/' + jsonDec['to'] + '/pubKey/' + jsonDec['from'] + '.data'
 		print(pub_key_path)		
 		# print(pub_key_path)
 		meta_dirpath = file_save_dir + '/';		
@@ -196,8 +194,7 @@ class FileTransferProtocal:
 				jsonDec["error"] = "no permission"			
 		else :
 			jsonDec["error"] = 'failed'
-		jsonDec['metaCRC'] = str(rsa_wrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))		
-		print(json.dumps(jsonDec))
+		jsonDec['metaCRC'] = str(rsa_wrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))				
 		enc = rsa_wrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)				
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)		
 		self.SERVER_STATUS = Server_status.FILETRANS_STATUS

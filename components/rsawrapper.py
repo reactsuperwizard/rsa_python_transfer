@@ -14,10 +14,9 @@ import zlib
 import json
 
 logging.basicConfig(level=logging.DEBUG)
-STR_SPLIT_LEN = 64
+STR_SPLIT_LEN = 32
 
-class RSAWrapper:
-
+class RSAWrapper:    	
 	def write_keys_to_file(self, out_path, value):      
 		with open(out_path, 'wb') as fwrite:
 		   fwrite.write(value)
@@ -76,36 +75,34 @@ class RSAWrapper:
 	def encryptJTS(self, toEncrypt, relativeOrAbsolutePathToPublicKey):
 		try:
 			pub_key = self.read_key_from_file(relativeOrAbsolutePathToPublicKey)            
-			public_key = RSA.importKey(pub_key)         
-			i = 0
+			public_key = RSA.importKey(pub_key)
 			len_enc = len(toEncrypt)
 			cipher_text = bytearray()
-			while(i < len_enc):
-				start_pos = i
-				end_pos = min(i + STR_SPLIT_LEN, len_enc)
+			for start_pos in range(0, len_enc, STR_SPLIT_LEN):
+				end_pos = min(start_pos + STR_SPLIT_LEN, len_enc)
 				sub_str = toEncrypt[start_pos:end_pos]
 				cipher_text.extend(public_key.encrypt(sub_str.encode(), STR_SPLIT_LEN)[0])                
-				i += STR_SPLIT_LEN
+				start_pos += STR_SPLIT_LEN
 			return cipher_text
 		except Exception as e:
 			logging.exception(e)            
 		return None
 
 	def decryptJTS(self, toDecrypt, relativeOrAbsolutePathtoPrivateKey):
-		try:        
+		try:
+			print('##################################')			
+			print(relativeOrAbsolutePathtoPrivateKey)
+			print('##################################')
 			private_key = self.read_key_from_file(relativeOrAbsolutePathtoPrivateKey) 
 			private_key_object = RSA.importKey(private_key)
-			i = 0
-			len_enc = len(toDecrypt)
+			len_enc = len(toDecrypt)			
 			result = bytearray()
 			STEP = 256
-			while(i < len_enc):
-				start_pos = i
-				end_pos = min(i + STEP, len_enc)
+			for start_pos in range(0, len_enc, STEP):				
+				end_pos = min(start_pos + STEP, len_enc)
 				array = (bytes(toDecrypt[start_pos:end_pos]))
 				decrypted_message = private_key_object.decrypt(array)
-				result.extend(decrypted_message)
-				i += STEP           
+				result.extend(decrypted_message)				
 			return bytes(result).decode()
 		except Exception as e:
 			logging.exception(e)            
