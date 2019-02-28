@@ -170,15 +170,9 @@ class FileTransferProtocal:
 		self.FILE_NAME = file_save_dir + '/' + jsonDec['filename']             
 		jsonDec['filekey'] = FILE_KEY
 		pub_key_path = './m2you/' + jsonDec['to'] + '/pubKey/' + jsonDec['from'] + '.data'
-		print(pub_key_path)
-		jsonDec['metaCRC'] = str(rsa_wrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))
-		
+		print(pub_key_path)		
 		# print(pub_key_path)
-		enc = rsa_wrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)				
-		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)
-		self.SERVER_STATUS = Server_status.FILETRANS_STATUS
-
-		meta_dirpath = file_save_dir + '/' + jsonDec['to'] + '/';		
+		meta_dirpath = file_save_dir + '/';		
 		rsawrapper.makeDirPath(meta_dirpath)
 		meta_filepath = meta_dirpath + jsonDec['from'] + "-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".meta"		
 
@@ -189,15 +183,22 @@ class FileTransferProtocal:
 		write_file_open.close()		
 		
 		# read config file path 
-		self.config = read_configFile('./m2you/' + jsonDec['to'])
+		self.config = read_configFile(file_save_dir)
 		if self.check_meta_in_conf(self.config, 'OnMeta') and self.check_meta_in_conf(self.config['OnMeta'], 'execute'):
-			data_param = {'meta_dirpath': './m2you/' + jsonDec['to'], 'meta_filepath': meta_filepath, 'result' :'False'}			
+			data_param = {'meta_dirpath': file_save_dir, 'meta_filepath': meta_filepath, 'result' :'False'}			
 			self.execute_script(self.config['OnMeta']['execute'], data_param);
 			global executeScript_result
 			print(executeScript_result)
-			if executeScript_result:
-				return enc  
-		return b"failed"		
+			if not executeScript_result:
+				jsonDec["json.error"] = "no permission"			
+		else :
+			jsonDec["json.error"] = 'failed'
+		jsonDec['metaCRC'] = str(rsa_wrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))		
+		print(json.dumps(jsonDec))
+		enc = rsa_wrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)				
+		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)		
+		self.SERVER_STATUS = Server_status.FILETRANS_STATUS
+		return enc
 	
 	def filetransfer_process(self, data):       
 		if self.receiveFromClient(data):

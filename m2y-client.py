@@ -78,8 +78,8 @@ def readInChunks(fileObj, chunkSize=2048):
 def receive_meta_data(data):
 	dec_txt = rsa_wrapper.decryptJTS(data, './m2you/zhenqiang/privateKey/zhenqiang.data'); 
 	JsonMeta = json.loads(dec_txt)
-	if not rsa_wrapper.checkMetaData(JsonMeta):
-		print("\ncrc check failed!")
+	if not rsa_wrapper.checkMetaData(JsonMeta) or JsonMeta['json.error'] != '':
+		print("\ncrc check failed or json.error is " + JsonMeta['json.error'] + "!")
 		return None
 	print("---- crc check success! ---- ")
 	FILE_KEY = JsonMeta['filekey']

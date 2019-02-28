@@ -19,17 +19,14 @@ def executeScript(meta_dirpath, meta_filepath):
             config = configparser.ConfigParser()            
             config.read(conf_path)            
             print(from_user)
-            if 'permission' in config:
-                my_list = config['permission']['users'].split(",")
-                print('here');
-                # print(my_list)
-                if from_user in my_list or from_user == 'Roland-Frai':
-                    return True            
-            
-        return False
+            if 'permission' in config and from_user in config['permission']:                
+                if config['permission'][from_user] == 'always':
+                    return True
+
     except Exception as identifier:
         print(identifier)
-        return False
+
+    return False
 
 print('BEGIN:')        
 if meta_filepath and  meta_dirpath :    
