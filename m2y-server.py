@@ -40,6 +40,7 @@ def writeLog(logStr):
 def read_configFile(meta_dirpath):
 	conf_path = meta_dirpath + '/m2y.config'
 	config = configparser.ConfigParser(allow_no_value=True)
+	config.optionxform=str
 	config.read(conf_path)
 	return config
 
@@ -80,7 +81,7 @@ class FileTransferProtocal:
 
 	#########################################
 	def execute_script(self, script_path, localsParameter = None):
-		run_script = './scripts/' + script_path
+		run_script = './scripts/' + script_path				
 		with open(run_script, "r") as script_file:
 			if localsParameter:				
 				file_content = script_file.read()
@@ -187,12 +188,9 @@ class FileTransferProtocal:
 		if self.check_meta_in_conf(self.config, 'OnMeta'):
 			data_param = {'meta_dirpath': file_save_dir, 'meta_filepath': meta_filepath, 'result' :'False'}			
 			script_filename = next(iter(self.config['OnMeta']))
-			self.execute_script(script_filename, data_param)			
 			print(script_filename)
+			self.execute_script(script_filename, data_param)						
 			global executeScript_result
-			executeScript_result = True
-			pass
-			# global executeScript_result
 			print(executeScript_result)
 			if not executeScript_result:
 				jsonDec["error"] = "no permission"			

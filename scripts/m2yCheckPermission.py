@@ -17,6 +17,7 @@ def executeScript(meta_dirpath, meta_filepath):
             ############### CONFIG
             conf_path = meta_dirpath + '/m2y.config'            
             config = configparser.ConfigParser(allow_no_value=True)
+            config.optionxform=str
             config.read(conf_path)            
             print(from_user)
             if 'permission' in config and from_user in config['permission']:                
