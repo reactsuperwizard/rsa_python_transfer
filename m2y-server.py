@@ -18,31 +18,38 @@ import sys
 import traceback
 import zlib
 
-SERVER_URL='127.0.0.1'
-SERVER_PORT = 5000
-CRC_CHECK_LEN = 4
-IV_LEN = 16
-BLOCK_SIZE = 4096 + IV_LEN
+
+def read_configFile(conf_path):
+	config = configparser.ConfigParser(allow_no_value=True)
+	config.optionxform=str
+	config.read(conf_path)
+	return config
+
+################ Config Read File ##############
+config = read_configFile('m2y.ini')
+
+try:
+	SERVER_URL='127.0.0.1'
+	SERVER_PORT = 5000
+	CRC_CHECK_LEN = 4
+	IV_LEN = 16
+	BLOCK_SIZE = 4096 + IV_LEN
+except Exception as ex:
+	pass
+FILE_KEY = 'random1234'
+
 
 logfile = open("./log/server.log", "a")
 rsa_wrapper = RSAWrapper()
 logging.basicConfig(level=logging.DEBUG)
-FILE_KEY = 'random1234'
 
+###############################
 
 
 def writeLog(logStr):
 	logfile.write(logStr)
 
-   
-	
 
-def read_configFile(meta_dirpath):
-	conf_path = meta_dirpath + '/m2y.config'
-	config = configparser.ConfigParser(allow_no_value=True)
-	config.optionxform=str
-	config.read(conf_path)
-	return config
 
 class Server_status(Enum):
 
@@ -150,7 +157,7 @@ class FileTransferProtocal:
 
 	########## step 2
 	def meta_data_process(self, data):
-		dec = rsa_wrapper.decryptJTS(data, './m2you/user/roland-frei/privateKey/roland-frei.data')
+		dec = rsa_wrapper.decryptJTS(data, './m2y/user/roland-frei/privateKey/roland-frei.data')
 		jsonDec = json.loads(dec)
 		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
 		# checking length header
@@ -164,11 +171,11 @@ class FileTransferProtocal:
 		jsonDec['meta_len'] = len_json
 		self.FILE_SIZE = jsonDec['filesize']    
 		# self.FILE_NAME = './temp.dat'
-		file_save_dir = './m2you/user/' + jsonDec['to']+'/'+jsonDec['folder']
+		file_save_dir = './m2y/user/' + jsonDec['to']+'/'+jsonDec['folder']
 		rsawrapper.makeDirPath(file_save_dir)
 		self.FILE_NAME = file_save_dir + '/' + jsonDec['filename']             
 		jsonDec['filekey'] = FILE_KEY
-		pub_key_path = './m2you/user/' + jsonDec['to'] + '/pubKey/' + jsonDec['from'] + '.data'
+		pub_key_path = './m2y/user/' + jsonDec['to'] + '/pubKey/' + jsonDec['from'] + '.data'
 		print(pub_key_path)		
 		# print(pub_key_path)
 		meta_dirpath = file_save_dir + '/';		
@@ -182,7 +189,7 @@ class FileTransferProtocal:
 		write_file_open.close()		
 		
 		# read config file path 
-		self.config = read_configFile(file_save_dir)
+		self.config = read_configFile(file_save_dir + '/m2y.config')
 		if self.check_meta_in_conf(self.config, 'OnMeta'):
 			data_param = {'meta_dirpath': file_save_dir, 'meta_filepath': meta_filepath, 'result' :'False'}			
 			script_filename = next(iter(self.config['OnMeta']))

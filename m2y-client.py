@@ -42,7 +42,7 @@ def sendMetaData() :
 		JsonMeta = json.load(meta_info)         
 	if(JsonMeta == None):
 		return  None
-	img_datapath = './m2you/user/' + JsonMeta['from'] + '/' + JsonMeta['folder'] + '/' + JsonMeta['filename']  
+	img_datapath = './m2y/user/' + JsonMeta['from'] + '/' + JsonMeta['folder'] + '/' + JsonMeta['filename']  
 	img_datapath = rsawrapper.checkFileExist(img_datapath)
 	if img_datapath == None :
 		return  None
@@ -55,7 +55,7 @@ def sendMetaData() :
 	rsa_header.meta_len = len(json_meta_str)
 	rsa_header.from_user = 1
 	rsa_header.to_user = 2
-	return rsa_wrapper.encryptJTS(json_meta_str, './m2you/user/' + JsonMeta['from'] + '/pubKey/' + JsonMeta['to'] + '.data')
+	return rsa_wrapper.encryptJTS(json_meta_str, './m2y/user/' + JsonMeta['from'] + '/pubKey/' + JsonMeta['to'] + '.data')
 	
 def encrypt_with_aes(key, plaintext):
 	global FILE_CRC
@@ -76,7 +76,7 @@ def readInChunks(fileObj, chunkSize=2048):
 		yield data
 
 def receive_meta_data(data):
-	dec_txt = rsa_wrapper.decryptJTS(data, './m2you/user/zhenqiang/privateKey/zhenqiang.data'); 	
+	dec_txt = rsa_wrapper.decryptJTS(data, './m2y/user/zhenqiang/privateKey/zhenqiang.data'); 	
 	JsonMeta = json.loads(dec_txt)
 	if not rsa_wrapper.checkMetaData(JsonMeta) or JsonMeta['error'] != '':
 		print("\ncrc check failed or From Server Error is " + JsonMeta['error'] + "!")
@@ -105,7 +105,7 @@ async def send_data(loop):
 	data = await reader.read(4096)  		
 	JsonMeta = receive_meta_data(data)
 	
-	path = './m2you/user/'+JsonMeta['from']+'/'+JsonMeta['folder']+'/'+JsonMeta['filename']
+	path = './m2y/user/'+JsonMeta['from']+'/'+JsonMeta['folder']+'/'+JsonMeta['filename']
 	print(path)
 	filekey = JsonMeta['filekey']
 	file_size = JsonMeta['filesize']

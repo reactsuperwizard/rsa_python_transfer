@@ -12,18 +12,18 @@ We must use the python3.7 or higher (https://bugs.python.org/issue33770)
 
 
 ##the sequence
-1. client load the file /m2you/zhenqiang/photo/myfoto.meta .. it contains the meta data as json
-2. encrypt the json with /m2you/zhenqiang/pubKey/roland-frei.data
+1. client load the file /m2y/zhenqiang/photo/myfoto.meta .. it contains the meta data as json
+2. encrypt the json with /m2y/zhenqiang/pubKey/roland-frei.data
 3. send the size of the encrypted json data as int64
 4. send the encrypted json data to the server
 5. the server receive the size of the json data
 6. the server receive the encrypted json data
-7. the server decrypt using m2you/roland-frei/privateKey/roland-frei.data
+7. the server decrypt using m2y/roland-frei/privateKey/roland-frei.data
 8. the server add ‘filekey=random1234’
-9. the server encrypt the json data with /m2you/roland-frei/pubKey/zhenqiang.data
+9. the server encrypt the json data with /m2y/roland-frei/pubKey/zhenqiang.data
 10. the server send the size of the encrypted meta data as int64
 11. the server send the meta back
-12. the client decrypt with /m2you/zhenqiang/privateKey/zhenqiang.data
+12. the client decrypt with /m2y/zhenqiang/privateKey/zhenqiang.data
 13. the client send the binary file block by block … encrypting every block with the filekey=random1234 as key
 14. the client send the crc of the binary file as int64
 15. the server calculates the crc that it was calculating while reciving
@@ -140,6 +140,50 @@ you can see the section [OnMeta], it defines the script that is executed when we
 2. when the binary file is received completely, execute the scripts [OnReceived]
 3. You can write the m2yCheckPermission.py, it read the m2y.config file, check the section [permission] and look if the json.from name is listed there (with = allways) , if not write to the meta data json.error=’no permission’, store the meta to file, and exit
 the scripts are stored in /m2y/scripts/
+
+##################################################################
+######################### STEP 3 #################################
+##################################################################
+the binary header
+there are 3 fields
+meta length 
+hash of “from” address
+hash of “to” address
+
+if the meta data is received, it must be decrypted using the private key of the receiver.
+if we have many users on one server, we dont know what user is receiving the message.
+
+on sending we calculate the hash of the users and place the hash in the binary header.
+
+on receive we need to find the username from the hash.
+for this we make a directory /m2y/hash2user/123456789abcdef.txt
+
+the filename is the username hash and the file contains the username
+this way we can remove the hardcoded usernames from the scripts
+
+… lets use sha256 for the hash … 
+
+design change
+lets move the users from m2y/USERNAME to /m2y/user/USERNAME
+m2y/user/roland-frei/foto/m2y.config
+
+
+m2yCreateUser.py roland-frei.json
+create a user from a json file.
+the json file contains :
+username	
+realname
+email
+mobile phone
+street
+city
+zip
+
+
+
+the script create the needed directories, and the rsa keys, the hash2user txt file.
+(the keys are only generated if they are not allready there)
+
 
 
 

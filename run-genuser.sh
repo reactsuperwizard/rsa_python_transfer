@@ -1,0 +1,1 @@
+clear & python3 m2yCreateUser.py roland-frei.json

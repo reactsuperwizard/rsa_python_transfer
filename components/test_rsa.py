@@ -43,15 +43,15 @@ rsa = RSAWrapper()
 prv_key, pub_key = rsa.generate_RSA()
 rsa.generateRSAKey();
 
-out_path = './m2you/zhenqiang/pubKey/roland-frei.data'
+out_path = './m2y/zhenqiang/pubKey/roland-frei.data'
 pub_key = read_key(out_path) 
-out_path = './m2you/roland-frei/privateKey/roland-frei.data'		
+out_path = './m2y/roland-frei/privateKey/roland-frei.data'		
 prv_key = read_key(out_path)
 test_rsa_key(pub_key, prv_key)
 
-out_path = './m2you/roland-frei/pubKey/zhenqiang.data'
+out_path = './m2y/roland-frei/pubKey/zhenqiang.data'
 pub_key = read_key(out_path) 
-out_path = './m2you/zhenqiang/privateKey/zhenqiang.data'		
+out_path = './m2y/zhenqiang/privateKey/zhenqiang.data'		
 prv_key = read_key(out_path)
 
 test_rsa_key(pub_key, prv_key)
@@ -59,10 +59,10 @@ test_rsa_key(pub_key, prv_key)
 
 message_text = 'test_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetestaaaaaaaaaaaaaaaaaaaaaaaaaa aaaaa aaaaa atest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetestaaaaaaaaaaaaaaaaaaaaaaaaaatest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetestaaaaaaaaaaaaaaaaaaaaaaaaaatest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetestaaaaaaaaaaaaaaaaaaaaaaaaaatest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetest_messagetestaaaaaaaaaaaaaaaaaaaaaaaaaa'
 
-pub_path = './m2you/zhenqiang/pubKey/roland-frei.data'
+pub_path = './m2y/zhenqiang/pubKey/roland-frei.data'
 encrypt_text = rsa.encryptJTS(message_text, pub_path)
 print('len = ', len(encrypt_text))
-priv_path = './m2you/roland-frei/privateKey/roland-frei.data'		
+priv_path = './m2y/roland-frei/privateKey/roland-frei.data'		
 decrypt_text = rsa.decryptJTS(encrypt_text, priv_path)
 
 print(len(message_text))

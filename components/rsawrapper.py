@@ -41,14 +41,14 @@ class RSAWrapper:
 	
 	def generateRSAKey(self):
 		try:
-			if not os.path.exists('./m2you/zhenqiang/privateKey'):
-				os.makedirs('./m2you/zhenqiang/privateKey')
-			if not os.path.exists('./m2you/zhenqiang/pubKey'):
-				os.makedirs('./m2you/zhenqiang/pubKey')
-			if not os.path.exists('./m2you/roland-frei/privateKey'):
-				os.makedirs('./m2you/roland-frei/privateKey')
-			if not os.path.exists('./m2you/roland-frei/pubKey'):
-				os.makedirs('./m2you/roland-frei/pubKey')
+			if not os.path.exists('./m2y/zhenqiang/privateKey'):
+				os.makedirs('./m2y/zhenqiang/privateKey')
+			if not os.path.exists('./m2y/zhenqiang/pubKey'):
+				os.makedirs('./m2y/zhenqiang/pubKey')
+			if not os.path.exists('./m2y/roland-frei/privateKey'):
+				os.makedirs('./m2y/roland-frei/privateKey')
+			if not os.path.exists('./m2y/roland-frei/pubKey'):
+				os.makedirs('./m2y/roland-frei/pubKey')
 		except Exception as ex:
 			ex = None;
 
@@ -56,20 +56,20 @@ class RSAWrapper:
 		print('priv : ', priv); 
 		print('pub : ', pub); 
 		
-		out_path = './m2you/roland-frei/privateKey/roland-frei.data'        
+		out_path = './m2y/roland-frei/privateKey/roland-frei.data'        
 		self.write_keys_to_file(out_path, priv) 
 		
-		out_path = './m2you/zhenqiang/pubKey/roland-frei.data'
+		out_path = './m2y/zhenqiang/pubKey/roland-frei.data'
 		self.write_keys_to_file(out_path, pub)
 
 		priv, pub = self.generate_RSA()     
 		print('priv : ', priv)
 		print('pub : ', pub)
 
-		out_path = './m2you/roland-frei/pubKey/zhenqiang.data'
+		out_path = './m2y/roland-frei/pubKey/zhenqiang.data'
 		self.write_keys_to_file(out_path, priv) 
 	 
-		out_path = './m2you/zhenqiang/privateKey/zhenqiang.data'
+		out_path = './m2y/zhenqiang/privateKey/zhenqiang.data'
 		self.write_keys_to_file(out_path, priv) 
 	
 	def encryptJTS(self, toEncrypt, relativeOrAbsolutePathToPublicKey):
