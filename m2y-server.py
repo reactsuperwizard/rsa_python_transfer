@@ -39,7 +39,7 @@ def writeLog(logStr):
 
 def read_configFile(meta_dirpath):
 	conf_path = meta_dirpath + '/m2y.config'
-	config = configparser.ConfigParser()
+	config = configparser.ConfigParser(allow_no_value=True)
 	config.read(conf_path)
 	return config
 
@@ -184,15 +184,20 @@ class FileTransferProtocal:
 		
 		# read config file path 
 		self.config = read_configFile(file_save_dir)
-		if self.check_meta_in_conf(self.config, 'OnMeta') and self.check_meta_in_conf(self.config['OnMeta'], 'execute'):
+		if self.check_meta_in_conf(self.config, 'OnMeta'):
 			data_param = {'meta_dirpath': file_save_dir, 'meta_filepath': meta_filepath, 'result' :'False'}			
-			self.execute_script(self.config['OnMeta']['execute'], data_param);
+			script_filename = next(iter(self.config['OnMeta']))
+			self.execute_script(script_filename, data_param)			
+			print(script_filename)
 			global executeScript_result
+			executeScript_result = True
+			pass
+			# global executeScript_result
 			print(executeScript_result)
 			if not executeScript_result:
-				jsonDec["json.error"] = "no permission"			
+				jsonDec["error"] = "no permission"			
 		else :
-			jsonDec["json.error"] = 'failed'
+			jsonDec["error"] = 'failed'
 		jsonDec['metaCRC'] = str(rsa_wrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))		
 		print(json.dumps(jsonDec))
 		enc = rsa_wrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)				
@@ -218,8 +223,9 @@ class FileTransferProtocal:
 			if not self.check_crc_file_part(data, self.FILE_CRC):
 				return b"failed"
 			else :    			
-				if self.check_meta_in_conf(self.config, 'OnReceived') and self.check_meta_in_conf(self.config['OnReceived'], 'execute'):
-					self.execute_script(self.config['OnReceived']['execute']);
+				if self.check_meta_in_conf(self.config, 'OnReceived'):
+					script_filename = next(iter(self.config['OnReceived']))
+					self.execute_script(script_filename)
 				return b"success"
 		return None
 
