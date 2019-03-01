@@ -75,6 +75,8 @@ class FileTransferProtocal:
 	write_file_open = None
 	rsa_header = RSAFtpHeader()
 	config = None
+	cur_fromuser = None
+	cur_touser = None
 
 	###############################
 	def init(self):
@@ -161,10 +163,8 @@ class FileTransferProtocal:
 		return b'accepted'
 
 	########## step 2
-	def meta_data_process(self, data):
-    		
+	def meta_data_process(self, data):    		
 		dec_txt = RsaWrapperObj.decryptJTS(data, M2Y_USERPATH + 'Roland-frei' + os.sep + PRIVATE_DIRNAME + os.sep +  'roland-frei' + KEYFILE_EXT)
-		print(dec_txt)
 		jsonDec = json.loads(dec_txt)
 		RsaWrapperObj.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
 		# checking length header

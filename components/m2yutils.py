@@ -78,7 +78,6 @@ class RSAWrapper:
 	
 	def generateRSAKey(self, user_name):
 		try:
-
 			config = read_configFile('./m2y.ini')
 			LOG_PATH = config.get('LOGFILE','PATH')
 			SCRIPT_PATH = config.get('PATHS','SCRIPT')
