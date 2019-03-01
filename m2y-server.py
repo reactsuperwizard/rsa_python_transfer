@@ -1,14 +1,15 @@
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
 from asyncio import Task, coroutine, get_event_loop
-from components import rsawrapper 
-from components.rsawrapper import RSAFtpHeader 
-from components.rsawrapper import RSAWrapper 
+from components import m2yutils 
+from components.m2yutils import RSAFtpHeader 
+from components.m2yutils import RSAWrapper 
 from enum import Enum
 from socket import socket, SO_REUSEADDR, SOL_SOCKET
 
-import asyncio
+
 import configparser
+import asyncio
 import datetime
 import json
 import logging
@@ -18,32 +19,33 @@ import sys
 import traceback
 import zlib
 
-
-################ Config Read File ##############
-
-def read_configFile(conf_path):
-	config = configparser.ConfigParser(allow_no_value=True)
-	config.optionxform=str
-	config.read(conf_path)	
-	return config
-
+################ Initialize Application ##############
 def init_app():
 	try:
-		global RsaFtpVar	
-		global SERVER_URL, SERVER_PORT, CRC_CHECK_LEN, IV_LEN, BLOCK_SIZE, FILE_KEY, LOG_PATH
-		
+		global RsaFtpVar, SCRIPT_PATH	
+		global SERVER_URL, SERVER_PORT, CRC_CHECK_LEN, IV_LEN, BLOCK_SIZE, FILE_KEY, LOG_PATH, M2Y_USERPATH 
+		global PRIVATE_DIRNAME, PUBLIC_DIRNAME, CONFIG_FILENAME, KEYFILE_EXT, METAFILE_EXT
+		global LogFileOutstream, RsaWrapperObj
+
 		RsaFtpVar = FileTransferProtocal()	
-		config = read_configFile('./m2y.ini')		
+		config = m2yutils.read_configFile('./m2y.ini')
 
 		SERVER_URL = config.get('SERVER','SERVER_URL')
 		SERVER_PORT = config.get('SERVER','SERVER_PORT')
 		CRC_CHECK_LEN = int(config.get('TRANSFER','CRC_CHECK_LEN'))
 		IV_LEN = int(config.get('TRANSFER','IV_LEN'))
 		BLOCK_SIZE = int(config.get('TRANSFER','BLOCK_SIZE'))
-		FILE_KEY = config.get('TRANSFER','FILE_KEY')		
-		LOG_PATH = config.get('LOGFILE','PATH')		
+		LOG_PATH = config.get('LOGFILE','PATH')
+		SCRIPT_PATH = config.get('PATHS','SCRIPT')
+		M2Y_USERPATH = config.get('PATHS','M2YUSERPATH') + os.sep
+		PRIVATE_DIRNAME = config.get('PATHS','PRIVATEDIRNAME')
+		PUBLIC_DIRNAME = config.get('PATHS','PUBLICDIRNAME')
+		CONFIG_FILENAME = config.get('PATHS','CONFIGFILENAME')
+		KEYFILE_EXT = config.get('PATHS','KEYFILEEXT')
+		METAFILE_EXT = config.get('PATHS','METAFILEEXT')
 		
-		global LogFileOutstream, RsaWrapperObj
+		
+		FILE_KEY='random1234'
 		LogFileOutstream = open(LOG_PATH, "a")		
 		RsaWrapperObj = RSAWrapper()
 		logging.basicConfig(level=logging.DEBUG)
@@ -90,7 +92,7 @@ class FileTransferProtocal:
 
 	#########################################
 	def execute_script(self, script_path, localsParameter = None):
-		run_script = './scripts/' + script_path				
+		run_script = SCRIPT_PATH + script_path				
 		with open(run_script, "r") as script_file:
 			if localsParameter:				
 				file_content = script_file.read()
@@ -134,8 +136,7 @@ class FileTransferProtocal:
 
 	################# Keep track of the chat clients
 	def receiveFromClient(self, data):
-		data_len = len(data)                    
-		# print("received " + str(self.SERVER_STATUS) + ": " + str(data_len))
+		data_len = len(data)
 		if data_len == BLOCK_SIZE or (self.FILE_SIZE - self.FILE_RECIEP_SIZE + IV_LEN == data_len):         
 			last_flag = (self.FILE_SIZE - self.FILE_RECIEP_SIZE + IV_LEN == data_len)
 			real_data = self.decrypt_with_aes(self.CURRENT_FILE_KEY, data)                      
@@ -150,19 +151,21 @@ class FileTransferProtocal:
 
 	######### step 1
 	def header_data_process(self, data):				
-		read_data = struct.unpack('lll', data)
+		read_data = struct.unpack('l', data[:8])
 		self.rsa_header = RSAFtpHeader()
 		self.rsa_header.meta_len = read_data[0]
-		self.rsa_header.from_user = read_data[1]
-		self.rsa_header.to_user = read_data[2]
+		self.rsa_header.from_user = data[8:40].hex()
+		self.rsa_header.to_user = data[40:].hex()
 		print(str(self.rsa_header.meta_len) + ":" + str(self.rsa_header.from_user) + ":" + str(self.rsa_header.to_user))
-		self.SERVER_STATUS = Server_status.META_STATUS
+		self.SERVER_STATUS = Server_status.META_STATUS		
 		return b'accepted'
 
 	########## step 2
 	def meta_data_process(self, data):
-		dec = RsaWrapperObj.decryptJTS(data, './m2y/user/roland-frei/privateKey/roland-frei.data')
-		jsonDec = json.loads(dec)
+    		
+		dec_txt = RsaWrapperObj.decryptJTS(data, M2Y_USERPATH + 'Roland-frei' + os.sep + PRIVATE_DIRNAME + os.sep +  'roland-frei' + KEYFILE_EXT)
+		print(dec_txt)
+		jsonDec = json.loads(dec_txt)
 		RsaWrapperObj.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
 		# checking length header
 		len_json = len(json.dumps(jsonDec))
@@ -174,17 +177,17 @@ class FileTransferProtocal:
 			return 'failed'
 		jsonDec['meta_len'] = len_json
 		self.FILE_SIZE = jsonDec['filesize']    
-		# self.FILE_NAME = './temp.dat'
-		file_save_dir = './m2y/user/' + jsonDec['to']+'/'+jsonDec['folder']
-		rsawrapper.makeDirPath(file_save_dir)
-		self.FILE_NAME = file_save_dir + '/' + jsonDec['filename']             
+
+		file_save_dir = M2Y_USERPATH + jsonDec['to'] + os.sep + jsonDec['folder']
+		m2yutils.makeDirPath(file_save_dir)
+		self.FILE_NAME = file_save_dir + os.sep + jsonDec['filename']             
 		jsonDec['filekey'] = FILE_KEY
-		pub_key_path = './m2y/user/' + jsonDec['to'] + '/pubKey/' + jsonDec['from'] + '.data'
+		pub_key_path = M2Y_USERPATH + jsonDec['to'] + os.sep + PUBLIC_DIRNAME + os.sep + jsonDec['from'] + KEYFILE_EXT
 		print(pub_key_path)		
-		# print(pub_key_path)
-		meta_dirpath = file_save_dir + '/';		
-		rsawrapper.makeDirPath(meta_dirpath)
-		meta_filepath = meta_dirpath + jsonDec['from'] + "-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".meta"		
+
+		meta_dirpath = file_save_dir + os.sep;		
+		m2yutils.makeDirPath(meta_dirpath)
+		meta_filepath = meta_dirpath + jsonDec['from'] + "-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + METAFILE_EXT
 
 		with open(meta_filepath, 'w') as meta_file_open:
 			meta_file_open.write(json.dumps(jsonDec))
@@ -192,8 +195,7 @@ class FileTransferProtocal:
 		write_file_open = open(self.FILE_NAME, "wb")
 		write_file_open.close()		
 		
-		# read config file path 
-		self.config = read_configFile(file_save_dir + '/m2y.config')
+		self.config = m2yutils.read_configFile(file_save_dir + os.sep + CONFIG_FILENAME)
 		if self.check_meta_in_conf(self.config, 'OnMeta'):
 			data_param = {'meta_dirpath': file_save_dir, 'meta_filepath': meta_filepath, 'result' :'False'}			
 			script_filename = next(iter(self.config['OnMeta']))
@@ -242,8 +244,7 @@ class FileTransferProtocal:
 				data = await reader.read(BLOCK_SIZE)					
 				if data == None or len(data) < CRC_CHECK_LEN:
 					break
-				result = self.main_data_process(data)
-				# print('resut = ', result)
+				result = self.main_data_process(data)				
 				writer.write(result)
 				writer.drain()
 				if(result == b"failed" or result == b"success"):

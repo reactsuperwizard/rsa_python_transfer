@@ -4,6 +4,7 @@ from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from collections import OrderedDict
 
+import hashlib
 import ast
 import base64
 import binascii
@@ -12,11 +13,46 @@ import os
 import sys
 import zlib
 import json
+import configparser
 
 logging.basicConfig(level=logging.DEBUG)
 STR_SPLIT_LEN = 32
 
-class RSAWrapper:    	
+############### Functions Block #################
+### Config Read File
+def read_configFile(conf_path):
+	config = configparser.ConfigParser(allow_no_value=True)
+	config.optionxform=str
+	config.read(conf_path)	
+	return config
+
+### Check Path
+def checkFileExist(filePath):	
+	if os.path.isfile(filePath) == None:
+		print("Can't exists", filePath)		
+		return None
+	return filePath
+
+### Make file Directory Path
+def makeDirPath(filePath):
+	if os.path.isdir(filePath):
+		return 
+	print(filePath)
+	try :
+		os.makedirs(filePath)
+	except Exception as e :		
+		sys.exit()
+### encrypt SHA256 
+def getEncrypt(toEncypt):
+	if type(toEncypt) == str:
+		toEncypt = bytes(toEncypt, 'utf8')
+	sha256 = hashlib.sha256()
+	sha256.update(toEncypt)                
+	return sha256.digest()
+
+	
+################# Object Block
+class RSAWrapper:
 	def write_keys_to_file(self, out_path, value):      
 		with open(out_path, 'wb') as fwrite:
 		   fwrite.write(value)
@@ -24,10 +60,11 @@ class RSAWrapper:
 
 	def read_key_from_file(self, filepath):
 		result = None
+		print(filepath)
 		try:
-			with open(filepath, 'rb') as fread:
-			   result = fread.read()
-			   fread.close()
+			with open(filepath, 'rb') as fread:				
+				result = fread.read()
+				fread.close()
 		except Exception as e:
 			result = None
 		return result
@@ -39,42 +76,41 @@ class RSAWrapper:
 		private_key = new_key.exportKey("PEM") 
 		return private_key, public_key
 	
-	def generateRSAKey(self):
+	def generateRSAKey(self, user_name):
 		try:
-			if not os.path.exists('./m2y/zhenqiang/privateKey'):
-				os.makedirs('./m2y/zhenqiang/privateKey')
-			if not os.path.exists('./m2y/zhenqiang/pubKey'):
-				os.makedirs('./m2y/zhenqiang/pubKey')
-			if not os.path.exists('./m2y/roland-frei/privateKey'):
-				os.makedirs('./m2y/roland-frei/privateKey')
-			if not os.path.exists('./m2y/roland-frei/pubKey'):
-				os.makedirs('./m2y/roland-frei/pubKey')
+
+			config = read_configFile('./m2y.ini')
+			LOG_PATH = config.get('LOGFILE','PATH')
+			SCRIPT_PATH = config.get('PATHS','SCRIPT')
+			M2Y_USERPATH = config.get('PATHS','M2YUSERPATH') + os.sep
+			PRIVATE_DIRNAME = config.get('PATHS','PRIVATEDIRNAME')
+			PUBLIC_DIRNAME = config.get('PATHS','PUBLICDIRNAME')
+			CONFIG_FILENAME = config.get('PATHS','CONFIGFILENAME')
+			KEYFILE_EXT = config.get('PATHS','KEYFILEEXT')
+
+			privKey, pubKey = self.generate_RSA()				
+
+			prv_dirpath = M2Y_USERPATH + user_name + os.sep + PRIVATE_DIRNAME
+			if not checkFileExist(prv_dirpath):
+				os.makedirs(prv_dirpath)			
+			out_path = prv_dirpath + os.sep + user_name + KEYFILE_EXT
+			self.write_keys_to_file(out_path, privKey)
+
+			pub_dirpath = M2Y_USERPATH + user_name + os.sep + PUBLIC_DIRNAME
+			if not checkFileExist(pub_dirpath):
+				os.makedirs(pub_dirpath)
+			out_path = pub_dirpath + os.sep + user_name + KEYFILE_EXT
 		except Exception as ex:
-			ex = None;
+			print(ex)
 
-		priv, pub = self.generate_RSA()     
-		print('priv : ', priv); 
-		print('pub : ', pub); 
 		
-		out_path = './m2y/roland-frei/privateKey/roland-frei.data'        
-		self.write_keys_to_file(out_path, priv) 
 		
-		out_path = './m2y/zhenqiang/pubKey/roland-frei.data'
-		self.write_keys_to_file(out_path, pub)
-
-		priv, pub = self.generate_RSA()     
-		print('priv : ', priv)
-		print('pub : ', pub)
-
-		out_path = './m2y/roland-frei/pubKey/zhenqiang.data'
-		self.write_keys_to_file(out_path, priv) 
-	 
-		out_path = './m2y/zhenqiang/privateKey/zhenqiang.data'
-		self.write_keys_to_file(out_path, priv) 
+		out_path = M2Y_USERPATH + user_name + '/privateKey/' + user_name + KEYFILE_EXT
+		self.write_keys_to_file(out_path, privKey) 
 	
 	def encryptJTS(self, toEncrypt, relativeOrAbsolutePathToPublicKey):
-		try:
-			pub_key = self.read_key_from_file(relativeOrAbsolutePathToPublicKey)            
+		try:			
+			pub_key = self.read_key_from_file(relativeOrAbsolutePathToPublicKey)
 			public_key = RSA.importKey(pub_key)
 			len_enc = len(toEncrypt)
 			cipher_text = bytearray()
@@ -102,7 +138,7 @@ class RSAWrapper:
 				end_pos = min(start_pos + STEP, len_enc)
 				array = (bytes(toDecrypt[start_pos:end_pos]))
 				decrypted_message = private_key_object.decrypt(array)
-				result.extend(decrypted_message)				
+				result.extend(decrypted_message)							
 			return bytes(result).decode()
 		except Exception as e:
 			logging.exception(e)            
@@ -140,22 +176,9 @@ class RSAWrapper:
 		if iteration == total: 
 			print()
 
-def checkFileExist(filePath):	
-	if os.path.isfile(filePath) == None:
-		print("Can't find", filePath)		
-		return None
-	return filePath
-
-def makeDirPath(filePath):
-	if os.path.isdir(filePath):
-		return 
-	print(filePath)
-	try :
-		os.makedirs(filePath)
-	except Exception as e :		
-		sys.exit()
-
 class RSAFtpHeader:
 	meta_len = 0
 	from_user = 0
 	to_user	 = 0
+
+
