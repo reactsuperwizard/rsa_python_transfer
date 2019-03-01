@@ -33,6 +33,11 @@ def checkFileExist(filePath):
 		return None
 	return filePath
 
+### printStep
+def printStep(stepnumber):
+	print('\n##########  step ' + str(stepnumber) + ' #############')
+	pass
+
 ### Make file Directory Path
 def makeDirPath(filePath):
 	if os.path.isdir(filePath):
@@ -42,6 +47,7 @@ def makeDirPath(filePath):
 		os.makedirs(filePath)
 	except Exception as e :		
 		sys.exit()
+
 ### encrypt SHA256 
 def getEncrypt(toEncypt):
 	if type(toEncypt) == str:
@@ -59,8 +65,7 @@ class RSAWrapper:
 		   fwrite.close()
 
 	def read_key_from_file(self, filepath):
-		result = None
-		print(filepath)
+		result = None		
 		try:
 			with open(filepath, 'rb') as fread:				
 				result = fread.read()
@@ -122,11 +127,9 @@ class RSAWrapper:
 
 	def decryptJTS(self, toDecrypt, relativeOrAbsolutePathtoPrivateKey):
 		try:			
-			private_key = self.read_key_from_file(relativeOrAbsolutePathtoPrivateKey) 
-			print(relativeOrAbsolutePathtoPrivateKey)
+			private_key = self.read_key_from_file(relativeOrAbsolutePathtoPrivateKey) 		
 			private_key_object = RSA.importKey(private_key)
-			len_enc = len(toDecrypt)			
-			print(len_enc)
+			len_enc = len(toDecrypt)
 			result = bytearray()
 			STEP = 256
 			for start_pos in range(0, len_enc, STEP):				

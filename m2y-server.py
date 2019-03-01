@@ -141,6 +141,7 @@ class FileTransferProtocal:
 	################# Keep track of the chat clients
 	def receiveFromClient(self, data):
 		data_len = len(data)
+		# print(str(self.FILE_SIZE - self.FILE_RECIEP_SIZE + IV_LEN) + ":" + str(data_len))
 		if data_len == BLOCK_SIZE or (self.FILE_SIZE - self.FILE_RECIEP_SIZE + IV_LEN == data_len):         
 			last_flag = (self.FILE_SIZE - self.FILE_RECIEP_SIZE + IV_LEN == data_len)
 			real_data = self.decrypt_with_aes(self.CURRENT_FILE_KEY, data)                      
@@ -166,7 +167,7 @@ class FileTransferProtocal:
 		self.rsa_header.meta_len = read_data[0]
 		self.rsa_header.from_user = data[8:40].hex()
 		self.rsa_header.to_user = data[40:].hex()
-		print(str(self.rsa_header.meta_len) + ":" + str(self.rsa_header.from_user) + ":" + str(self.rsa_header.to_user))
+		# print(str(self.rsa_header.meta_len) + ":" + str(self.rsa_header.from_user) + ":" + str(self.rsa_header.to_user))
 		from_user_hash = str(self.rsa_header.from_user)
 		self.cur_fromuser = self.get_hash2username(from_user_hash)
 		to_user_hash = str(self.rsa_header.to_user)
@@ -198,8 +199,6 @@ class FileTransferProtocal:
 		self.FILE_NAME = file_save_dir + os.sep + jsonDec['filename']             
 		jsonDec['filekey'] = FILE_KEY
 		pub_key_path = M2Y_USERPATH + jsonDec['to'] + os.sep + PUBLIC_DIRNAME + os.sep + jsonDec['from'] + KEYFILE_EXT
-		print(pub_key_path)		
-
 		meta_dirpath = file_save_dir + os.sep;		
 		m2yutils.makeDirPath(meta_dirpath)
 		meta_filepath = meta_dirpath + jsonDec['from'] + "-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + METAFILE_EXT
@@ -237,19 +236,28 @@ class FileTransferProtocal:
 		
 	def main_data_process(self, data):
 		if self.SERVER_STATUS == Server_status.HEADER_STATUS:			
-			return self.header_data_process(data)
+			result = self.header_data_process(data)
+			m2yutils.printStep(1)
+			return result
 		elif self.SERVER_STATUS == Server_status.META_STATUS:			
-			return self.meta_data_process(data)					
+			result = self.meta_data_process(data)					
+			m2yutils.printStep(2)
+			return result
 		elif self.SERVER_STATUS == Server_status.FILETRANS_STATUS:
-			return self.filetransfer_process(data)
+			result = self.filetransfer_process(data)
+			return result
 		elif self.SERVER_STATUS == Server_status.LASTFILE_STATUS:
 			if not self.check_crc_file_part(data, self.FILE_CRC):
-				return b"failed"
+				result = b"failed"
+				m2yutils.printStep(4)
+				return result
 			else :    			
 				if self.check_meta_in_conf(self.config, 'OnReceived'):
 					script_filename = next(iter(self.config['OnReceived']))
 					self.execute_script(script_filename)
-				return b"success"
+				result = b"success"
+				m2yutils.printStep(4)
+				return result
 		return None
 
 	async def file_trans_protocal(self, reader, writer):    

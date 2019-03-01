@@ -30,9 +30,9 @@ sendfilePath = dirpath + sys.argv[1]
 def init_app():
 	try:
 		global RsaFtpVar, SCRIPT_PATH	
-		global SERVER_URL, SERVER_PORT, CRC_CHECK_LEN, IV_LEN, BLOCK_SIZE, FILE_KEY, LOG_PATH, M2Y_USERPATH 
+		global SERVER_URL, SERVER_PORT, CRC_CHECK_LEN, IV_LEN, CLIENT_BLOCK_SIZE, FILE_KEY, LOG_PATH, M2Y_USERPATH 
 		global PRIVATE_DIRNAME, PUBLIC_DIRNAME, CONFIG_FILENAME, KEYFILE_EXT, METAFILE_EXT
-		global LogFileOutstream, RsaWrapperObj, RsaHeaderBlock		
+		global LogFileOutstream, RsaWrapperObj
 		
 		CLIENT_STATUS = 0
 		config = m2yutils.read_configFile('./m2y.ini')
@@ -41,7 +41,7 @@ def init_app():
 		SERVER_PORT = config.get('SERVER','SERVER_PORT')
 		CRC_CHECK_LEN = int(config.get('TRANSFER','CRC_CHECK_LEN'))
 		IV_LEN = int(config.get('TRANSFER','IV_LEN'))
-		BLOCK_SIZE = int(config.get('TRANSFER','BLOCK_SIZE'))		
+		CLIENT_BLOCK_SIZE = int(config.get('TRANSFER','CLIENT_BLOCK_SIZE'))		
 		LOG_PATH = config.get('LOGFILE','PATH')
 		SCRIPT_PATH = config.get('PATHS','SCRIPT')
 		M2Y_USERPATH = config.get('PATHS','M2YUSERPATH') + os.sep
@@ -54,14 +54,13 @@ def init_app():
 
 		FILE_BUF = None		
 		LogFileOutstream = open(LOG_PATH, "a")		
-		RsaWrapperObj = RSAWrapper()
-		RsaHeaderBlock = RSAFtpHeader()
+		RsaWrapperObj = RSAWrapper()		
 		logging.basicConfig(level=logging.DEBUG)
 	except Exception as ex:	
 		print(ex)
 
 def sendMetaData() :
-	global RsaHeaderBlock
+	RsaHeaderBlock = RSAFtpHeader()
 	meta_filepath = m2yutils.checkFileExist(sendfilePath)
 	if meta_filepath == None :
 		return None
@@ -85,11 +84,8 @@ def sendMetaData() :
 	RsaHeaderBlock.to_user = m2yutils.getEncrypt(JsonMeta['to'])
 	print(JsonMeta['from'])
 	print(JsonMeta['to'])
-	
-	
-	encrypt_path = M2Y_USERPATH + JsonMeta['from'] + os.sep + PUBLIC_DIRNAME + os.sep + JsonMeta['to'] + KEYFILE_EXT
-	print(encrypt_path)
-	return RsaWrapperObj.encryptJTS(json_meta_str, encrypt_path)
+	encrypt_path = M2Y_USERPATH + JsonMeta['from'] + os.sep + PUBLIC_DIRNAME + os.sep + JsonMeta['to'] + KEYFILE_EXT	
+	return RsaWrapperObj.encryptJTS(json_meta_str, encrypt_path), RsaHeaderBlock
 	
 def encrypt_with_aes(key, plaintext):
 	iv = os.urandom(16)	
@@ -120,23 +116,32 @@ def receive_meta_data(data):
 	print("file key : ", FILE_KEY);               
 	return JsonMeta
 
+
+
 async def send_data(loop):	
-	global RsaHeaderBlock
+
+	m2yutils.printStep(0)
 	reader, writer = await asyncio.open_connection(SERVER_URL, SERVER_PORT, loop=loop)
 	FILE_CRC = 0
-	send_data = sendMetaData()
-	# print(RsaHeaderBlock.meta_len)	
-	output = struct.pack('l',RsaHeaderBlock.meta_len) +  RsaHeaderBlock.from_user + RsaHeaderBlock.to_user
-	# print(output)
+	send_data, RsaHeaderBlock = sendMetaData()
+	output = struct.pack('l', RsaHeaderBlock.meta_len) +  RsaHeaderBlock.from_user + RsaHeaderBlock.to_user
+	assert send_data != None
+	
+	m2yutils.printStep(1)
 	writer.write(output)	
 	writer.drain()
-	read_data = await reader.read(1024)  		
-	# print('Send: ',  len(data))
+	
+	read_data = await reader.read(1024)
+	assert read_data == b'accepted'
+	m2yutils.printStep(2)
+
 	writer.write(send_data)
-	writer.drain()
+	writer.drain()	
 	send_data = await reader.read(4096)  		
 	JsonMeta = receive_meta_data(send_data)
-	
+	assert JsonMeta != None
+	m2yutils.printStep(3)
+
 	path = M2Y_USERPATH + JsonMeta['from'] + os.sep + JsonMeta['folder'] + os.sep + JsonMeta['filename']
 	print(path)
 	filekey = JsonMeta['filekey']
@@ -144,7 +149,7 @@ async def send_data(loop):
 	filekey = RsaWrapperObj.make_key(filekey)
 	data_size = 0
 	f = open(path, 'rb')
-	for chunk in readInChunks(f, BLOCK_SIZE):
+	for chunk in readInChunks(f, CLIENT_BLOCK_SIZE):
 		send_data, FILE_CRC_CUR = encrypt_with_aes(filekey, chunk)
 		FILE_CRC ^= FILE_CRC_CUR
 		writer.write(send_data)
@@ -160,13 +165,12 @@ async def send_data(loop):
 	writer.write(bytes(str_file_crc, 'utf8'))
 	writer.drain()
 	send_data = await reader.read(1024)
-	
 	if send_data == b'success':
 		print('Transfer success!!')
 	else :
 		print('Transfer failed!!')
 	writer.close()
-
+	m2yutils.printStep(4)
 	print('Close the socket')
 
 loop = asyncio.get_event_loop()
