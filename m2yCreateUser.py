@@ -16,7 +16,8 @@ def check_fucntion(meta_path):
         with io.open(meta_path, 'r', encoding='utf8') as meta_info:
             JsonMeta = json.load(meta_info)            
             if JsonMeta != None:
-                username = bytes(JsonMeta['username'], 'utf-8')
+                username = JsonMeta['username']
+                print(username)
                 filename = m2yutils.getEncrypt(username).hex()
                 print(filename)
                 m2yutils.makeDirPath(M2Y_HASHPATH)
@@ -25,7 +26,7 @@ def check_fucntion(meta_path):
                 print(m2yutils.checkFileExist(hashfile_path))
                 if m2yutils.checkFileExist(hashfile_path):
                     with open(hashfile_path, 'w') as outfile:
-                        outfile.write(username.decode("utf-8") )
+                        outfile.write(username)
                         outfile.close()                                        
                 RESULT = 'SUCCESS - GEN USER'
                 ############### check the file path ###########

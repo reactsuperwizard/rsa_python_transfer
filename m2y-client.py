@@ -16,6 +16,10 @@ from components import m2yutils
 from collections import OrderedDict
 import logging
 
+
+FROM_USERNAME = 'Zhenqiang'
+TO_USERNAME = 'Roland-Frei'
+
 data_size = 0
 JsonMeta = None
 glength = 0
@@ -79,6 +83,10 @@ def sendMetaData() :
 	RsaHeaderBlock.meta_len = len(json_meta_str)	
 	RsaHeaderBlock.from_user = m2yutils.getEncrypt(JsonMeta['from'])
 	RsaHeaderBlock.to_user = m2yutils.getEncrypt(JsonMeta['to'])
+	print(JsonMeta['from'])
+	print(JsonMeta['to'])
+	
+	
 	encrypt_path = M2Y_USERPATH + JsonMeta['from'] + os.sep + PUBLIC_DIRNAME + os.sep + JsonMeta['to'] + KEYFILE_EXT
 	print(encrypt_path)
 	return RsaWrapperObj.encryptJTS(json_meta_str, encrypt_path)
@@ -100,10 +108,8 @@ def readInChunks(fileObj, chunkSize=2048):
 		yield data
 
 def receive_meta_data(data):
-	meta_path = M2Y_USERPATH + 'zhenqiang' + os.sep +  PRIVATE_DIRNAME + os.sep + 'zhenqiang' + KEYFILE_EXT	
-	print(data)
-	dec_txt = RsaWrapperObj.decryptJTS(data, meta_path)
-	
+	meta_path = M2Y_USERPATH + FROM_USERNAME + os.sep +  PRIVATE_DIRNAME + os.sep + FROM_USERNAME + KEYFILE_EXT		
+	dec_txt = RsaWrapperObj.decryptJTS(data, meta_path)	
 	JsonMeta = json.loads(dec_txt)
 	if not RsaWrapperObj.checkMetaData(JsonMeta) or JsonMeta['error'] != '':
 		print("\ncrc check failed or From Server Error is " + JsonMeta['error'] + "!")

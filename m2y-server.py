@@ -24,7 +24,7 @@ def init_app():
 	try:
 		global RsaFtpVar, SCRIPT_PATH	
 		global SERVER_URL, SERVER_PORT, CRC_CHECK_LEN, IV_LEN, BLOCK_SIZE, FILE_KEY, LOG_PATH, M2Y_USERPATH 
-		global PRIVATE_DIRNAME, PUBLIC_DIRNAME, CONFIG_FILENAME, KEYFILE_EXT, METAFILE_EXT
+		global PRIVATE_DIRNAME, PUBLIC_DIRNAME, CONFIG_FILENAME, KEYFILE_EXT, METAFILE_EXT, M2Y_HASHPATH, HASHFILE_EXT
 		global LogFileOutstream, RsaWrapperObj
 
 		RsaFtpVar = FileTransferProtocal()	
@@ -38,11 +38,13 @@ def init_app():
 		LOG_PATH = config.get('LOGFILE','PATH')
 		SCRIPT_PATH = config.get('PATHS','SCRIPT')
 		M2Y_USERPATH = config.get('PATHS','M2YUSERPATH') + os.sep
+		M2Y_HASHPATH = config.get('PATHS','M2YHASHPATH') + os.sep
 		PRIVATE_DIRNAME = config.get('PATHS','PRIVATEDIRNAME')
 		PUBLIC_DIRNAME = config.get('PATHS','PUBLICDIRNAME')
 		CONFIG_FILENAME = config.get('PATHS','CONFIGFILENAME')
 		KEYFILE_EXT = config.get('PATHS','KEYFILEEXT')
 		METAFILE_EXT = config.get('PATHS','METAFILEEXT')
+		HASHFILE_EXT = config.get('PATHS','HASHFILEEXT')
 		
 		
 		FILE_KEY='random1234'
@@ -151,6 +153,12 @@ class FileTransferProtocal:
 		else : 
 			return False
 
+	def get_hash2username(self, hashname):
+		username = None
+		with open(M2Y_HASHPATH + hashname + HASHFILE_EXT, "r") as file:
+			username = file.read()
+			file.close()
+		return username
 	######### step 1
 	def header_data_process(self, data):				
 		read_data = struct.unpack('l', data[:8])
@@ -159,12 +167,19 @@ class FileTransferProtocal:
 		self.rsa_header.from_user = data[8:40].hex()
 		self.rsa_header.to_user = data[40:].hex()
 		print(str(self.rsa_header.meta_len) + ":" + str(self.rsa_header.from_user) + ":" + str(self.rsa_header.to_user))
+		from_user_hash = str(self.rsa_header.from_user)
+		self.cur_fromuser = self.get_hash2username(from_user_hash)
+		to_user_hash = str(self.rsa_header.to_user)
+		self.cur_touser = self.get_hash2username(to_user_hash)
 		self.SERVER_STATUS = Server_status.META_STATUS		
+		print(self.cur_fromuser + ":" + self.cur_touser)
+		if self.cur_fromuser == None or self.cur_touser == None:
+			return b'failed' 
 		return b'accepted'
 
 	########## step 2
 	def meta_data_process(self, data):    		
-		dec_txt = RsaWrapperObj.decryptJTS(data, M2Y_USERPATH + 'Roland-frei' + os.sep + PRIVATE_DIRNAME + os.sep +  'roland-frei' + KEYFILE_EXT)
+		dec_txt = RsaWrapperObj.decryptJTS(data, M2Y_USERPATH + self.cur_touser + os.sep + PRIVATE_DIRNAME + os.sep +  self.cur_touser + KEYFILE_EXT)
 		jsonDec = json.loads(dec_txt)
 		RsaWrapperObj.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
 		# checking length header

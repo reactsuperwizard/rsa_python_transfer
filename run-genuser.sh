@@ -1,1 +1,1 @@
-clear & python3 m2yCreateUser.py roland-frei.json
+clear & python3 m2yCreateUser.py Roland-Frei.json & python3 m2yCreateUser.py Zhenqiang.json

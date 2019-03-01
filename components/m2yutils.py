@@ -16,7 +16,7 @@ import json
 import configparser
 
 logging.basicConfig(level=logging.DEBUG)
-STR_SPLIT_LEN = 32
+STR_SPLIT_LEN = 128
 
 ############### Functions Block #################
 ### Config Read File
@@ -101,10 +101,7 @@ class RSAWrapper:
 			out_path = pub_dirpath + os.sep + user_name + KEYFILE_EXT
 		except Exception as ex:
 			print(ex)
-
-		
-		
-		out_path = M2Y_USERPATH + user_name + '/privateKey/' + user_name + KEYFILE_EXT
+		out_path = M2Y_USERPATH + user_name + os.sep + PRIVATE_DIRNAME + os.sep + user_name + KEYFILE_EXT
 		self.write_keys_to_file(out_path, privKey) 
 	
 	def encryptJTS(self, toEncrypt, relativeOrAbsolutePathToPublicKey):
@@ -124,13 +121,12 @@ class RSAWrapper:
 		return None
 
 	def decryptJTS(self, toDecrypt, relativeOrAbsolutePathtoPrivateKey):
-		try:
-			print('##################################')			
-			print(relativeOrAbsolutePathtoPrivateKey)
-			print('##################################')
+		try:			
 			private_key = self.read_key_from_file(relativeOrAbsolutePathtoPrivateKey) 
+			print(relativeOrAbsolutePathtoPrivateKey)
 			private_key_object = RSA.importKey(private_key)
 			len_enc = len(toDecrypt)			
+			print(len_enc)
 			result = bytearray()
 			STEP = 256
 			for start_pos in range(0, len_enc, STEP):				
