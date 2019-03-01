@@ -19,37 +19,41 @@ import traceback
 import zlib
 
 
+################ Config Read File ##############
+
 def read_configFile(conf_path):
 	config = configparser.ConfigParser(allow_no_value=True)
 	config.optionxform=str
-	config.read(conf_path)
+	config.read(conf_path)	
 	return config
 
-################ Config Read File ##############
-config = read_configFile('m2y.ini')
+def init_app():
+	try:
+		global RsaFtpVar	
+		global SERVER_URL, SERVER_PORT, CRC_CHECK_LEN, IV_LEN, BLOCK_SIZE, FILE_KEY, LOG_PATH
+		
+		RsaFtpVar = FileTransferProtocal()	
+		config = read_configFile('./m2y.ini')		
 
-try:
-	SERVER_URL='127.0.0.1'
-	SERVER_PORT = 5000
-	CRC_CHECK_LEN = 4
-	IV_LEN = 16
-	BLOCK_SIZE = 4096 + IV_LEN
-except Exception as ex:
-	pass
-FILE_KEY = 'random1234'
+		SERVER_URL = config.get('SERVER','SERVER_URL')
+		SERVER_PORT = config.get('SERVER','SERVER_PORT')
+		CRC_CHECK_LEN = int(config.get('TRANSFER','CRC_CHECK_LEN'))
+		IV_LEN = int(config.get('TRANSFER','IV_LEN'))
+		BLOCK_SIZE = int(config.get('TRANSFER','BLOCK_SIZE'))
+		FILE_KEY = config.get('TRANSFER','FILE_KEY')		
+		LOG_PATH = config.get('LOGFILE','PATH')		
+		
+		global LogFileOutstream, RsaWrapperObj
+		LogFileOutstream = open(LOG_PATH, "a")		
+		RsaWrapperObj = RSAWrapper()
+		logging.basicConfig(level=logging.DEBUG)
+	except Exception as ex:	
+		print(ex)
 
-
-logfile = open("./log/server.log", "a")
-rsa_wrapper = RSAWrapper()
-logging.basicConfig(level=logging.DEBUG)
 
 ###############################
-
-
 def writeLog(logStr):
-	logfile.write(logStr)
-
-
+	LogFileOutstream.write(logStr)
 
 class Server_status(Enum):
 
@@ -78,7 +82,7 @@ class FileTransferProtocal:
 		self.FILE_RECIEP_SIZE = 0
 		self.token_index = 0
 		self.FILE_NAME = ""     
-		self.CURRENT_FILE_KEY = rsa_wrapper.make_key(FILE_KEY)
+		self.CURRENT_FILE_KEY = RsaWrapperObj.make_key(FILE_KEY)
 		self.FILE_CRC = 0
 		self.rsa_header = RSAFtpHeader()
 		self.config = None
@@ -137,7 +141,7 @@ class FileTransferProtocal:
 			real_data = self.decrypt_with_aes(self.CURRENT_FILE_KEY, data)                      
 			self.FILE_RECIEP_SIZE += len(real_data)
 			self.write_file(real_data)			
-			rsa_wrapper.printProgressBar(self.FILE_RECIEP_SIZE, self.FILE_SIZE, prefix = 'Progress:', suffix = (str(data_len) + ' bytes Received'), length = 50)
+			RsaWrapperObj.printProgressBar(self.FILE_RECIEP_SIZE, self.FILE_SIZE, prefix = 'Progress:', suffix = (str(data_len) + ' bytes Received'), length = 50)
 			if last_flag:				
 				self.SERVER_STATUS = Server_status.LASTFILE_STATUS
 			return True
@@ -157,15 +161,15 @@ class FileTransferProtocal:
 
 	########## step 2
 	def meta_data_process(self, data):
-		dec = rsa_wrapper.decryptJTS(data, './m2y/user/roland-frei/privateKey/roland-frei.data')
+		dec = RsaWrapperObj.decryptJTS(data, './m2y/user/roland-frei/privateKey/roland-frei.data')
 		jsonDec = json.loads(dec)
-		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
+		RsaWrapperObj.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'received from client', length = 50)
 		# checking length header
 		len_json = len(json.dumps(jsonDec))
 		if int(self.rsa_header.meta_len) != len_json :
 			print("\n Check meta data length is different!" + str(self.rsa_header.meta_len) + ":" + str(len_json))
 			return 'failed'
-		if not rsa_wrapper.checkMetaData(jsonDec):
+		if not RsaWrapperObj.checkMetaData(jsonDec):
 			print("\n Check meta data failed!")
 			return 'failed'
 		jsonDec['meta_len'] = len_json
@@ -201,9 +205,9 @@ class FileTransferProtocal:
 				jsonDec["error"] = "no permission"			
 		else :
 			jsonDec["error"] = 'failed'
-		jsonDec['metaCRC'] = str(rsa_wrapper.getCRCCode(json.dumps(jsonDec, sort_keys=True)))				
-		enc = rsa_wrapper.encryptJTS(json.dumps(jsonDec), pub_key_path)				
-		rsa_wrapper.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)		
+		jsonDec['metaCRC'] = str(RsaWrapperObj.getCRCCode(json.dumps(jsonDec, sort_keys=True)))				
+		enc = RsaWrapperObj.encryptJTS(json.dumps(jsonDec), pub_key_path)				
+		RsaWrapperObj.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)		
 		self.SERVER_STATUS = Server_status.FILETRANS_STATUS
 		return enc
 	
@@ -253,9 +257,9 @@ class FileTransferProtocal:
 			writer.close()
 			self.init()
 
-rsaftp = FileTransferProtocal()
 loop = asyncio.get_event_loop()
-coro = asyncio.start_server(rsaftp.file_trans_protocal, SERVER_URL, SERVER_PORT, loop=loop)
+init_app()
+coro = asyncio.start_server(RsaFtpVar.file_trans_protocal, SERVER_URL, SERVER_PORT, loop=loop)
 server = loop.run_until_complete(coro)
 
 print('Serving on {}'.format(server.sockets[0].getsockname()))

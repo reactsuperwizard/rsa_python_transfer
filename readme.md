@@ -180,7 +180,6 @@ city
 zip
 
 
-
 the script create the needed directories, and the rsa keys, the hash2user txt file.
 (the keys are only generated if they are not allready there)
 

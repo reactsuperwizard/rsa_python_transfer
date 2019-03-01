@@ -1,0 +1,1 @@
+clear & python3 m2y-server.py
