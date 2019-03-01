@@ -24,7 +24,7 @@ data_size = 0
 JsonMeta = None
 glength = 0
 dirpath = os.getcwd()
-sendfilePath = dirpath + sys.argv[1]
+
 
 ################ Initialize Application ##############
 def init_app():
@@ -59,11 +59,12 @@ def init_app():
 	except Exception as ex:	
 		print(ex)
 
-def sendMetaData() :
+def sendMetaData(sendfilePath) :
 	RsaHeaderBlock = RSAFtpHeader()
 	meta_filepath = m2yutils.checkFileExist(sendfilePath)
-	if meta_filepath == None :
-		return None
+	
+	assert meta_filepath != None		
+	
 	JsonMeta = None
 	with io.open(meta_filepath, 'r', encoding='utf8') as meta_info:
 		JsonMeta = json.load(meta_info)         
@@ -71,8 +72,8 @@ def sendMetaData() :
 		return  None
 	img_datapath = M2Y_USERPATH + JsonMeta['from'] + os.sep + JsonMeta['folder'] + os.sep + JsonMeta['filename']
 	img_datapath = m2yutils.checkFileExist(img_datapath)
-	if img_datapath == None :
-		return  None
+	assert img_datapath != None
+
 	imgdata_statinfo = os.stat(img_datapath)
 	JsonMeta['filesize'] = imgdata_statinfo.st_size;
 	json_meta_str = json.dumps(JsonMeta, sort_keys=True)    
@@ -118,15 +119,17 @@ def receive_meta_data(data):
 
 
 
-async def send_data(loop):	
-
+async def send_data(loop):			
+	assert sys.argv[1] != None
 	m2yutils.printStep(0)
-	reader, writer = await asyncio.open_connection(SERVER_URL, SERVER_PORT, loop=loop)
+	
 	FILE_CRC = 0
-	send_data, RsaHeaderBlock = sendMetaData()
+	send_data, RsaHeaderBlock = sendMetaData(dirpath + sys.argv[1])
 	output = struct.pack('l', RsaHeaderBlock.meta_len) +  RsaHeaderBlock.from_user + RsaHeaderBlock.to_user
 	assert send_data != None
 	
+	
+	reader, writer = await asyncio.open_connection(SERVER_URL, SERVER_PORT, loop=loop)
 	m2yutils.printStep(1)
 	writer.write(output)	
 	writer.drain()

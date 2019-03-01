@@ -28,10 +28,10 @@ def read_configFile(conf_path):
 
 ### Check Path
 def checkFileExist(filePath):	
-	if os.path.isfile(filePath) == None:
-		print("Can't exists", filePath)		
-		return None
-	return filePath
+	if os.path.isfile(filePath):
+		return filePath
+	print("Can't exists", filePath)		
+	return None
 
 ### printStep
 def printStep(stepnumber):
