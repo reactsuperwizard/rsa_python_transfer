@@ -222,7 +222,7 @@ class FileTransferProtocal:
 				write_file_open = open(self.FILE_NAME, "wb")
 				write_file_open.close()		
 		else :
-			jsonDec["error"] = mata_savepath + "meta file no exists."			
+			jsonDec["error"] = mata_savepath + " m2y.config file no exists."			
 		jsonDec['metaCRC'] = str(RsaWrapperObj.getCRCCode(json.dumps(jsonDec, sort_keys=True)))				
 		enc = RsaWrapperObj.encryptJTS(json.dumps(jsonDec), pub_key_path)				
 		RsaWrapperObj.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)		
