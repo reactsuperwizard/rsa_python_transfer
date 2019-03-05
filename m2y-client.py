@@ -107,8 +107,11 @@ def receive_meta_data(data):
 	meta_path = M2Y_USERPATH + FROM_USERNAME + os.sep +  PRIVATE_DIRNAME + os.sep + FROM_USERNAME + KEYFILE_EXT		
 	dec_txt = RsaWrapperObj.decryptJTS(data, meta_path)	
 	JsonMeta = json.loads(dec_txt)
-	if not RsaWrapperObj.checkMetaData(JsonMeta) or JsonMeta['error'] != '':
-		print("\ncrc check failed or From Server Error is " + JsonMeta['error'] + "!")
+	if not RsaWrapperObj.checkMetaData(JsonMeta):
+		print("\ncrc check failed")
+		return None
+	elif JsonMeta['error'] != '':
+		print("\n" + JsonMeta['error'] + "\n")
 		return None
 	print("---- crc check success! ---- ")
 	FILE_KEY = JsonMeta['filekey']

@@ -194,7 +194,7 @@ class FileTransferProtocal:
 		self.FILE_SIZE = jsonDec['filesize']    
 
 		file_save_dir = M2Y_USERPATH + jsonDec['to'] + os.sep + jsonDec['folder']
-		mata_savepath = M2Y_USERPATH + jsonDec['to'] + os.sep
+		mata_savepath = M2Y_USERPATH + jsonDec['to'] + os.sep + jsonDec['folder']
 		m2yutils.makeDirPath(file_save_dir)
 		self.FILE_NAME = file_save_dir + os.sep + jsonDec['filename']             
 		jsonDec['filekey'] = FILE_KEY
@@ -222,11 +222,13 @@ class FileTransferProtocal:
 				write_file_open = open(self.FILE_NAME, "wb")
 				write_file_open.close()		
 		else :
-			jsonDec["error"] = 'failed'
+			jsonDec["error"] = mata_savepath + "meta file no exists."			
 		jsonDec['metaCRC'] = str(RsaWrapperObj.getCRCCode(json.dumps(jsonDec, sort_keys=True)))				
 		enc = RsaWrapperObj.encryptJTS(json.dumps(jsonDec), pub_key_path)				
 		RsaWrapperObj.printProgressBar(0, 10000, prefix = 'Progress:', suffix = 'send meta data to client', length = 50)		
 		self.SERVER_STATUS = Server_status.FILETRANS_STATUS
+		if jsonDec["error"] != '': 
+			print("\n" + jsonDec["error"] + "\n")
 		return enc
 	
 	def filetransfer_process(self, data):       
