@@ -1,1 +1,1 @@
-clear & python3 m2y-client.py /m2y/user/zhenqiang/photo/myfoto.meta
+clear & python3 m2y-client.py /m2y/user/Zhenqiang/photo/myfoto.meta

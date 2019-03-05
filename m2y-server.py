@@ -45,8 +45,7 @@ def init_app():
 		KEYFILE_EXT = config.get('PATHS','KEYFILEEXT')
 		METAFILE_EXT = config.get('PATHS','METAFILEEXT')
 		HASHFILE_EXT = config.get('PATHS','HASHFILEEXT')
-		
-		
+
 		FILE_KEY='random1234'
 		LogFileOutstream = open(LOG_PATH, "a")		
 		RsaWrapperObj = RSAWrapper()
@@ -195,6 +194,7 @@ class FileTransferProtocal:
 		self.FILE_SIZE = jsonDec['filesize']    
 
 		file_save_dir = M2Y_USERPATH + jsonDec['to'] + os.sep + jsonDec['folder']
+		mata_savepath = M2Y_USERPATH + jsonDec['to'] + os.sep
 		m2yutils.makeDirPath(file_save_dir)
 		self.FILE_NAME = file_save_dir + os.sep + jsonDec['filename']             
 		jsonDec['filekey'] = FILE_KEY
@@ -206,19 +206,21 @@ class FileTransferProtocal:
 		with open(meta_filepath, 'w') as meta_file_open:
 			meta_file_open.write(json.dumps(jsonDec))
 			meta_file_open.close()
-		write_file_open = open(self.FILE_NAME, "wb")
-		write_file_open.close()		
 		
-		self.config = m2yutils.read_configFile(file_save_dir + os.sep + CONFIG_FILENAME)
+		
+		self.config = m2yutils.read_configFile(mata_savepath + os.sep + CONFIG_FILENAME)
 		if self.check_meta_in_conf(self.config, 'OnMeta'):
-			data_param = {'meta_dirpath': file_save_dir, 'meta_filepath': meta_filepath, 'result' :'False'}			
+			data_param = {'meta_dirpath': mata_savepath, 'meta_filepath': meta_filepath, 'result' :'False'}			
 			script_filename = next(iter(self.config['OnMeta']))
 			print(script_filename)
 			self.execute_script(script_filename, data_param)						
 			global executeScript_result
 			print(executeScript_result)
 			if not executeScript_result:
-				jsonDec["error"] = "no permission"			
+				jsonDec["error"] = "no permission"
+			else :
+				write_file_open = open(self.FILE_NAME, "wb")
+				write_file_open.close()		
 		else :
 			jsonDec["error"] = 'failed'
 		jsonDec['metaCRC'] = str(RsaWrapperObj.getCRCCode(json.dumps(jsonDec, sort_keys=True)))				
